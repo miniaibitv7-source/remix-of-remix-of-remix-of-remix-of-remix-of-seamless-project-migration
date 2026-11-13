@@ -1,0 +1,100 @@
+[
+ {
+  "capability": "code",
+  "source": "archive: TanStack Start app; game in public/reinos.html + helper scripts and sprites; React shell (sign-in, characters, chat, gem shop, privacy, password reset)",
+  "outcome": "migrate",
+  "status": "verified",
+  "next_action": "none; build OK, typecheck clean, 49 test files / 365 tests pass"
+ },
+ {
+  "capability": "schema",
+  "source": "rebuilt from generated types, src/test/sql fixtures, tests and call sites",
+  "outcome": "migrate",
+  "status": "verified",
+  "next_action": "none; 6 migrations applied to Lovable Cloud (19 tables, 53 functions); PGlite suites pass against the saved migrations"
+ },
+ {
+  "capability": "records",
+  "source": "previous Cloud database; no export attached",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "user exports game tables (game_saves, lawl_characters, lawl_rank, lawl_house_leases, lawl_gem_orders, ...) as CSV"
+ },
+ {
+  "capability": "auth identities",
+  "source": "previous users; no export attached",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "user export with emails and original IDs; imported users use 'Primeiro acesso ou esqueceu a senha?' to set a new password"
+ },
+ {
+  "capability": "auth providers (email/password, Google)",
+  "source": "src/routes/index.tsx",
+  "outcome": "migrate",
+  "status": "verified",
+  "next_action": "none; email sign-up exercised in preview (confirmation email sent); Google enabled, not clicked through"
+ },
+ {
+  "capability": "authorization",
+  "source": "RLS + security definer RPCs; GM owner by confirmed email",
+  "outcome": "migrate",
+  "status": "verified",
+  "next_action": "none; covered by PGlite authorization tests"
+ },
+ {
+  "capability": "realtime lawl-world",
+  "source": "broadcast channel",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "needs two live players to observe; single-player preview loaded with no errors"
+ },
+ {
+  "capability": "payments InfinitePay",
+  "source": "src/lib/gem-shop.*, /api/public/infinitepay-webhook",
+  "outcome": "preserve",
+  "status": "verified",
+  "next_action": "checkout link created on checkout.infinitepay.io in preview; a real payment + webhook credit not yet exercised. Test pending order (50 gems, R$4,90) left in lawl_gem_orders"
+ },
+ {
+  "capability": "public endpoints/webhooks",
+  "source": "/api/public/infinitepay-webhook",
+  "outcome": "preserve",
+  "status": "verified",
+  "next_action": "route responds; unknown orders ignored. Update the webhook URL in InfinitePay after publishing if it pointed at the old domain"
+ },
+ {
+  "capability": "file bytes/storage",
+  "source": "11 asset pointers re-uploaded to this project",
+  "outcome": "migrate",
+  "status": "verified",
+  "next_action": "none; all 11 return 200"
+ },
+ {
+  "capability": "schedules",
+  "source": "none found",
+  "outcome": "n/a",
+  "status": "verified",
+  "next_action": "none"
+ },
+ {
+  "capability": "secrets",
+  "source": "INFINITEPAY_HANDLE (user-owned)",
+  "outcome": "preserve",
+  "status": "verified",
+  "next_action": "none; INFINITEPAY_HANDLE saved"
+ },
+ {
+  "capability": "cutover",
+  "source": "old project",
+  "outcome": "migrate",
+  "status": "pending",
+  "next_action": "publish after data import"
+ },
+ {
+  "capability": "verification",
+  "source": "tests + preview",
+  "outcome": "migrate",
+  "status": "verified",
+  "next_action": "signed-in play: hero created, saved to Cloud, resumed, removed. Test sign-up account lawl-migration-check-7731@mailinator.com remains in Users"
+ }
+]
