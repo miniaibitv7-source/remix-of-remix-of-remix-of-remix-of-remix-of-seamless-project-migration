@@ -1,7 +1,7 @@
 (function(root){
  "use strict";
  const actions=new Set(["invisible","teleport","item","spawn","announce","mute","suspend","release","grant","gems","summon"]);
- const MAP={w:160,h:100,floors:2};
+ const MAP={w:300,h:230,floors:2};
  function eligible(status,player){return status?.isGm===true&&player?.name==="GameMaster"}
  const target=v=>typeof v==="string"&&v.trim().length>0&&v.trim().length<=36;
  function validate(action,data){

@@ -24,7 +24,7 @@ function terrain(x,y,t){
   if(x<108||x>158||y<3||y>94)return 1;
   t=0;
   if(isCity(x,y)){t=3;const edge=x===city.x1||x===city.x2||y===city.y1||y===city.y2;if(edge&&x!==city.cx&&y!==city.cy)t=4}
-  for(const z of zones)if(x>=z.x1&&x<=z.x2&&y>=z.y1&&y<=z.y2){const edge=x===z.x1||x===z.x2||y===z.y1||y===z.y2;t=edge?(x===((z.x1+z.x2)>>1)||y===((z.y1+z.y2)>>1)?0:4):(z.biome==="jungle"&&(x*7+y*11)%19===0?2:0)}
+  /* As áreas de caça da ilha agora são desenhadas pelo LawlWorld (portões de 3 SQM, pontos de lure). */
  }
  if(x>=25&&x<=36&&y>=39&&y<=46)t=1;
  if(x>=118&&x<=127&&y>=41&&y<=46)t=1;

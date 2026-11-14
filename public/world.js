@@ -181,6 +181,8 @@ function drawTree(ctx,sx,sy,u,x,y,T){const bi=biomeAt(x,y);if(!bi)return false;c
  for(const [cx,cy,r] of [[8,4.8,4.2],[4.8,6.8,3],[11.2,6.4,3]])b(cx,cy,r+.7,"#17121d");for(const [cx,cy,r] of [[8,4.8,4.2],[4.8,6.8,3],[11.2,6.4,3]])b(cx,cy,r,"#3b3150");b(7,3.6,1.6,"#5a4b78");if(gh(x,y,5)<.25)b(10,7,.7,"#c9ff7a");return true}
 const MM={desert:{0:"#c9a75e",2:"#5f8a3a",11:"#8a6a3e"},ice:{0:"#cfe0ea",2:"#3f6a6a",11:"#8fb4cc"},dark:{0:"#3a4636",2:"#1f2a1d",11:"#4a4458"}};
 function mm(t,x,y){if(t===12)return"#e9c56a";const bi=biomeAt(x,y);return(bi&&MM[bi][t])||(t===11?"#6b6b70":null)}
+/* Zona segura nas cidades novas: templo (9×9), depósito com a entrada e o cais. As ruas são zona de batalha, como em Lawl. */
+function safeAt(x,y){return cities.some(c=>(Math.abs(x-c.cx)<=4&&Math.abs(y-c.cy)<=4)||inRect(c.depot,x,y)||(x===c.depot.door[0]&&y===c.depot.door[1]+1)||(Math.abs(x-c.port.x)<=2&&y>=c.port.y-3&&y<=c.port.y+3))}
 function cityOf(x,y){if(premiumAt(x,y)){const c=cityAt(x,y);if(c)return c.name;if(y>=171&&x<=158)return"Kharum";if(x>=167)return y<=106?"Glacira":"Umbra";return"Porto Aurora"}return"Lawl"}
-root.LawlWorld={W,H,FREE,premiumAt,biomeAt,cities,AURORA,cityAt,isCity,houses,ports,npcs,ROUTES,routes,quote,zones,bridges,terrain,buildCities,buildBridges,roads,drawGround,drawTile,drawTree,mm,cityOf,gh};
+root.LawlWorld={W,H,FREE,premiumAt,biomeAt,cities,AURORA,cityAt,isCity,houses,ports,npcs,ROUTES,routes,quote,zones,bridges,terrain,buildCities,buildBridges,roads,safeAt,drawGround,drawTile,drawTree,mm,cityOf,gh};
 })(typeof window!=="undefined"?window:globalThis);

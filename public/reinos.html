@@ -519,6 +519,7 @@ window.lawlAreaFx=(function(){
 <script src="/seafaring.js"></script>
 <script src="/housing.js"></script>
 <script src="/caves.js"></script>
+<script src="/world.js"></script>
 <script src="/skulls.js"></script>
 <script src="/stances.js"></script>
 <script src="/items.js"></script>
@@ -556,19 +557,11 @@ const monsters=[
 monsters.push(...LawlSeafaring.monsters);
 monsters.push(...LawlMonsters.catalog);
 const MON=n=>monsters.find(m=>m.name===n);
-const ZONES=[
- {name:"Toca dos Ratos",x1:2,y1:3,x2:17,y2:19,top:"Rato",sub:"Rato Gigante",n:16},
- {name:"Floresta dos Lobos",x1:56,y1:3,x2:74,y2:19,top:"Lobo",sub:"Aranha",n:16},
- {name:"Acampamento Orc",x1:79,y1:3,x2:97,y2:19,top:"Orc",sub:"Orc Guerreiro",n:16},
- {name:"Pântano Sombrio",x1:4,y1:40,x2:22,y2:60,top:"Lagarto",sub:"Serpente",n:16},
- {name:"Cemitério Antigo",x1:56,y1:40,x2:74,y2:58,top:"Esqueleto",sub:"Múmia",n:16},
- {name:"Montanha dos Trolls",x1:80,y1:40,x2:96,y2:62,top:"Troll",sub:"Golem",n:14},
- {name:"Deserto Escaldante",x1:8,y1:80,x2:34,y2:103,top:"Escorpião",sub:"Vampiro",n:16},
- {name:"Covil do Dragão",x1:50,y1:80,x2:76,y2:103,top:"Dragão",sub:"Demônio",n:9}
-];
-ZONES.push(...LawlSeafaring.zones);
-LawlMonsters.populate(ZONES);
+/* Áreas de caça do mundo expandido (LawlWorld), do mais fraco ao mais forte. Os monstros antigos (em português)
+   continuam no catálogo para drops, bosses e GM, mas não nascem mais no mapa. n = monstros por andar [superfície, subsolo]. */
+const ZONES=LawlWorld.zones.map(z=>({...z,top:z.top[0],wikiTop:z.top.slice(1),sub:z.sub[0],wikiSub:z.sub.slice(1),nz:z.n,n:z.n[0]}));
 ZONES.forEach(z=>{z.cx=(z.x1+z.x2)>>1;z.cy=(z.y1+z.y2)>>1});
+const ALL_PORTS=[...LawlSeafaring.ports,...LawlWorld.ports];
 function zoneAt(x,y){return ZONES.findIndex(z=>x>z.x1&&x<z.x2&&y>z.y1&&y<z.y2)}
 let maps=[[],[]],mobsZ=[[],[]],npcsTop=[],lastZoneKey="";
 const lootPrices={"Teia":18,"Couro de Lagarto":35,"Bandagem":80,"Clava de Troll":65,"Pedra Rúnica":140,"Ferrão":45,"Presa de Vampiro":200,"Chifre de Demônio":700,"Rabo de Rato":4,"Pata de Lobo":10,"Dente de Orc":25,"Osso Antigo":50,"Escama de Dragão":300};
@@ -604,11 +597,11 @@ equipment.push(...LawlItems.amuletGear(),...LawlItems.ringGear());
 // Os equipamentos por nível (Aprendiz…Lenda, colares e mochilas) foram excluídos: continuam na lista só para os índices do GM não mudarem.
 const gearOn=e=>!!e&&!LawlItems.isRetired(e);
 const QUESTS=[
- {id:"q_rats",title:"Praga no Celeiro",desc:"Derrote 5 Ratos nos arredores da cidade.",target:"Rato",needed:5,gold:50,xp:30},
- {id:"q_wolves",title:"Ameaça Selvagem",desc:"Cace 4 Lobos nas florestas.",target:"Lobo",needed:4,gold:120,xp:80},
- {id:"q_orcs",title:"Invasão Orc",desc:"Elimine 3 Orcs guerreiros.",target:"Orc",needed:3,gold:250,xp:180},
- {id:"q_skeletons",title:"Ossos Errantes",desc:"Purifique 2 Esqueletos antigos.",target:"Esqueleto",needed:2,gold:450,xp:320},
- {id:"q_dragon",title:"O Desafio Supremo",desc:"Derrote 1 lendário Dragão vermelho.",target:"Dragão",needed:1,gold:1500,xp:1500}
+ {id:"q_rats",title:"Praga no Celeiro",desc:"Derrote 5 Rats no Prado dos Ratos, ao sul de Lawl.",target:"Rat",needed:5,gold:50,xp:30},
+ {id:"q_wolves",title:"Ameaça Selvagem",desc:"Cace 4 Spiders na Gruta dos Morcegos.",target:"Spider",needed:4,gold:120,xp:80},
+ {id:"q_orcs",title:"Invasão Orc",desc:"Elimine 3 Orc Soldiers no subsolo do Posto da Fronteira.",target:"Orc Soldier",needed:3,gold:250,xp:180},
+ {id:"q_skeletons",title:"Ossos Errantes",desc:"Purifique 2 Skeletons na Cripta Esquecida.",target:"Skeleton",needed:2,gold:450,xp:320},
+ {id:"q_dragon",title:"O Desafio Supremo",desc:"Derrote 1 Small Dragon no Ninho dos Dragões Jovens.",target:"Small Dragon",needed:1,gold:1500,xp:1500}
 ];
 const SKILLS=[
  {key:"sword",icon:"⚔️",name:"Espada",desc:"Aumenta o dano corpo a corpo."},
@@ -620,7 +613,7 @@ const SLOT_ICON={Arma:"⚔️",Armadura:"🥋",Capacete:"⛑️",Escudo:"🛡️
 Object.assign(lootPrices,{"Pinça de Caranguejo":8,"Medalhão Pirata":28,"Escama Esmeralda":55,"Seda da Selva":75,"Fragmento do Farol":160,"Essência das Marés":250});
 // Itens comuns e produtos de criatura do wiki (preço 0 = o Mercador não compra).
 for(const x of LawlItems.LOOT_ITEMS)if(!Object.prototype.hasOwnProperty.call(lootPrices,x.name))lootPrices[x.name]=x.sell;
-const SAVE="miniaibit-standalone-save-v1",W=160,H=108;
+const SAVE="miniaibit-standalone-save-v1",W=LawlWorld.W,H=LawlWorld.H;
 let lastCombatAt=-Infinity;var lawlCurSkull="";
 let corpses=[],deathFlash=0;
 const fxNow=()=>performance.now()/1000;
@@ -694,7 +687,7 @@ function openGM(){if(!isGM())return;
  const stages=gmItemStages(),stageOpts=stages.map((g,i)=>`<option value="${i}">${i+1}. ${escapeHtml(g.label)}</option>`).join("");
  const players=[...(window.__lawlOthers||new Map()).values()].filter(o=>o.id!==GM.status.gmId);
  openModal("🛡️ GameMaster",`<div class="gm-status" id="gmStatus">Invulnerabilidade ativa</div><label class="gm-switch"><input id="gmInvisible" type="checkbox" ${gmInvisible?"checked":""}>Invisível</label>
- <section class="gm-section"><h3>Teleporte</h3><div class="gm-grid"><label>X<input id="gmX" type="number" min="0" max="159" value="${p.x}"></label><label>Y<input id="gmY" type="number" min="0" max="99" value="${p.y}"></label><label class="gm-wide">Andar<select id="gmZ"><option value="0" ${p.z===0?"selected":""}>Superfície</option><option value="1" ${p.z===1?"selected":""}>Subsolo</option></select></label></div><button data-gm="teleport">↗ Teleportar</button></section>
+ <section class="gm-section"><h3>Teleporte</h3><div class="gm-grid"><label>X<input id="gmX" type="number" min="0" max="${W-1}" value="${p.x}"></label><label>Y<input id="gmY" type="number" min="0" max="${H-1}" value="${p.y}"></label><label class="gm-wide">Andar<select id="gmZ"><option value="0" ${p.z===0?"selected":""}>Superfície</option><option value="1" ${p.z===1?"selected":""}>Subsolo</option></select></label></div><button data-gm="teleport">↗ Teleportar</button></section>
  <section class="gm-section"><h3>Criar itens</h3><div class="gm-grid"><label class="gm-wide">Etapa<select id="gmStage">${stageOpts}</select></label><label class="gm-wide">Item<select id="gmItem"></select></label><label class="gm-wide">Quantidade<input id="gmQuantity" type="number" min="1" max="20" value="1"></label></div><button data-gm="item">＋ Criar item</button></section>
  <section class="gm-section"><h3>Invocar monstro</h3><div class="gm-grid"><label class="gm-wide">Monstro<select id="gmMonster">${monsters.map((m,i)=>`<option value="${i}">${escapeHtml(m.name)}</option>`).join("")}</select></label><label>Quantidade<input id="gmSpawnQuantity" type="number" min="1" max="10" value="1"></label></div><button data-gm="spawn">＋ Invocar</button></section>
  <section class="gm-section"><h3>Aviso global</h3><div class="gm-grid"><label class="gm-wide">Mensagem<input id="gmMessage" maxlength="200"></label></div><button data-gm="announce">📣 Enviar aviso</button></section>
@@ -860,27 +853,29 @@ function depotArea(x,y){return x>=43&&x<=47&&y>=27&&y<=33}
 function depotApproach(x,y){return x===42&&y>=29&&y<=31}
 /* Zona segura em Lawl: só o templo (onde nasce), o treino, o depósito e o interior das casas. Ruas e caminhos da cidade são zona de batalha normal. */
 function inHouse(x,y){try{return HOUSE_LIST.some(h=>LawlHousing.inside(h,x,y))}catch(_){return false}}
-function safe(x,y){return town(x,y)||inHouse(x,y)||training(x,y)||depotArea(x,y)||depotApproach(x,y)||LawlSeafaring.isDock(x,y)}
+function safe(x,y){return town(x,y)||inHouse(x,y)||training(x,y)||depotArea(x,y)||depotApproach(x,y)||LawlSeafaring.isDock(x,y)||LawlWorld.safeAt(x,y)}
 function mobOk(z,x,y){const t=maps[z]?.[y]?.[x];if(!(t===0||t===3||t===7))return false;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const u=maps[z]?.[y+dy]?.[x+dx];if(u===5||u===8)return false}if(z===1&&ZONES.some(Z=>Math.abs(Z.cx+2-x)<=1&&Math.abs(Z.cy-y)<=1))return false;return true}
-function walkable(x,y){const t=map[y]?.[x];if(p&&window.__lawlPzBlocked&&window.__lawlPzBlocked()&&safe(x,y)&&!safe(p.x,p.y))return false;if(p?.z===0){const h=HOUSE_LIST.find(h=>LawlHousing.inside(h,x,y));if(h&&!LawlHousing.valid(houseLeases.get(h.id),Date.now()))return false}return t===0||t===3||t===5||t===7||t===8||t===10}
+function walkable(x,y){const t=map[y]?.[x];if(p&&window.__lawlPzBlocked&&window.__lawlPzBlocked()&&safe(x,y)&&!safe(p.x,p.y))return false;if(p?.z===0){const h=HOUSE_LIST.find(h=>LawlHousing.inside(h,x,y));if(h&&!LawlHousing.valid(houseLeases.get(h.id),Date.now()))return false}return t===0||t===3||t===5||t===7||t===8||t===10||(t===12&&(isPremium()||isGM()))}
 function occupied(x,y){return mobs.some(m=>m.x===x&&m.y===y)||npcs.some(n=>n.x===x&&n.y===y)||(p.x===x&&p.y===y)}
 
 /* ===== Bosses do subsolo, tarefas do Draven e teleportes ===== */
 const BOSSES=[
- {name:"Rei Rato Purulento",kind:"Rato",base:"Rato Gigante",rec:1,n:15,color:"#5a4a3a",trophy:"Coroa do Rei Rato",ic:"🐀"},
- {name:"Aracna, a Tecelã",kind:"Aranha",base:"Aranha",rec:8,n:20,color:"#4a1a4a",trophy:"Seda de Aracna",ic:"🕷️"},
- {name:"Grokk, Senhor da Guerra",kind:"Orc",base:"Orc Guerreiro",rec:15,n:20,color:"#2f5a1f",trophy:"Machado de Grokk",ic:"🪓"},
- {name:"Hydra do Pântano",kind:"Serpente",base:"Serpente",rec:22,n:25,color:"#1f5a3a",trophy:"Cabeça de Hydra",ic:"🐍"},
- {name:"Faraó Amaldiçoado",kind:"Múmia",base:"Múmia",rec:30,n:25,color:"#d8c070",trophy:"Máscara do Faraó",ic:"⚱️"},
- {name:"Colosso de Pedra",kind:"Golem",base:"Golem",rec:40,n:25,color:"#6a6258",trophy:"Núcleo do Colosso",ic:"🗿"},
- {name:"Conde Sanguinário",kind:"Vampiro",base:"Vampiro",rec:55,n:30,color:"#4a0a1a",trophy:"Cálice de Sangue",ic:"🧛"},
- {name:"Azaroth, Arquidemônio",kind:"Demônio",base:"Demônio",rec:70,n:20,color:"#5a0000",trophy:"Coração de Azaroth",ic:"😈"}
+ {name:"Rei Rato Purulento",zone:"Prado dos Ratos",task:"Rat",kind:"Rato",base:"Rato Gigante",rec:1,n:15,color:"#5a4a3a",trophy:"Coroa do Rei Rato",ic:"🐀"},
+ {name:"Aracna, a Tecelã",zone:"Gruta dos Morcegos",task:"Spider",kind:"Aranha",base:"Aranha",rec:8,n:20,color:"#4a1a4a",trophy:"Seda de Aracna",ic:"🕷️"},
+ {name:"Grokk, Senhor da Guerra",zone:"Posto da Fronteira",task:"Orc Soldier",kind:"Orc",base:"Orc Guerreiro",rec:15,n:20,color:"#2f5a1f",trophy:"Machado de Grokk",ic:"🪓"},
+ {name:"Hydra do Pântano",zone:"Ninho dos Dragões Jovens",task:"Small Dragon",kind:"Serpente",base:"Serpente",rec:22,n:25,color:"#1f5a3a",trophy:"Cabeça de Hydra",ic:"🐍"},
+ {name:"Faraó Amaldiçoado",zone:"Cripta Esquecida",task:"Rotten Skeleton",kind:"Múmia",base:"Múmia",rec:30,n:25,color:"#d8c070",trophy:"Máscara do Faraó",ic:"⚱️"},
+ {name:"Colosso de Pedra",zone:"Colinas dos Ciclopes",task:"Mad Cyclops",kind:"Golem",base:"Golem",rec:40,n:25,color:"#6a6258",trophy:"Núcleo do Colosso",ic:"🗿"},
+ {name:"Conde Sanguinário",zone:"Ruínas do Farol",task:"Ghost",kind:"Vampiro",base:"Vampiro",rec:55,n:30,color:"#4a0a1a",trophy:"Cálice de Sangue",ic:"🧛"},
+ {name:"Azaroth, Arquidemônio",zone:"Penhasco dos Dragões",task:"Dragon",kind:"Demônio",base:"Demônio",rec:70,n:20,color:"#5a0000",trophy:"Coração de Azaroth",ic:"😈"}
 ];
+/* zone = área cujo subsolo guarda o portal; task = monstro da tarefa do Draven; base = monstro antigo usado só para os atributos do boss. */
+BOSSES.forEach(B=>{B.zi=ZONES.findIndex(z=>z.name===B.zone)});
 BOSSES.forEach((B,i)=>{lootPrices[B.trophy]=Math.round(MON(B.base).gold*25);const M=LawlMounts.forBoss(i);if(M)lootPrices[M.item]=lootPrices[B.trophy]*4});
 const BROOM=i=>({x:4+i*12,y:80});
 function bossStats(i){const B=BOSSES[i],b=MON(B.base),f=1+Math.max(0,p.level-B.rec)*.05;
  return {name:"👑 "+B.name,hp:Math.round(b.hp*10*f),dmg:Math.round(b.dmg*1.6*f),xp:Math.round(b.xp*15*f),gold:Math.round(b.gold*12*f),color:B.color,size:1,loot:B.trophy}}
-function portalsHere(){if(!p)return[];if(p.z===1)return ZONES.slice(0,BOSSES.length).map((Z,i)=>({x:Z.cx+2,y:Z.cy,i,kind:"in",open:!!(p.bossKey&&p.bossKey[i])}));
+function portalsHere(){if(!p)return[];if(p.z===1)return BOSSES.map((B,i)=>({x:ZONES[B.zi].cx+2,y:ZONES[B.zi].cy,i,kind:"in",open:!!(p.bossKey&&p.bossKey[i])}));
  if(p.z===2)return BOSSES.map((B,i)=>({x:BROOM(i).x+1,y:BROOM(i).y+5,i,kind:"out",open:true}));return[]}
 function checkPortals(){const po=portalsHere().find(q=>q.x===p.x&&q.y===p.y);if(!po){p.portLock=false;return}if(p.portLock)return;p.portLock=true;
  if(po.kind==="in"){if(!po.open){say(`🔒 Portal selado: complete a tarefa de ${BOSSES[po.i].name} com o Draven na cidade.`);return}enterBoss(po.i)}
@@ -895,7 +890,7 @@ function bossDead(m){const i=m.room,B=BOSSES[i];if(p.bossKey)delete p.bossKey[i]
  say(auto?`🏆 ${B.name} foi derrotado! Recebeu ${B.ic} ${B.trophy}, 💎 ${g}, 3 poções de vida e 3 de mana. Use o portal para sair.`:`🏆 ${B.name} foi derrotado! Recebeu 💎 ${g}. ${B.ic} ${B.trophy} e 6 poções caíram no chão: chegue perto e toque em "Pegar loot".`);pop(m.x,m.y,"🏆 VITÓRIA","#e9c56a");
  const drop=LawlMounts.recordBossKill(p,i);if(drop){const M=LawlMounts.byItem(drop);if(!auto){p.loot[drop]--;if(p.loot[drop]<=0)delete p.loot[drop];pile.loot[drop]=(pile.loot[drop]||0)+1}say(auto?`✨ ${B.name} deixou cair ${M.ic} ${drop}! Use o item na mochila para liberar a montaria ${M.name}.`:`✨ ${B.name} deixou cair ${M.ic} ${drop} no chão! Pegue a bolsa antes que ela suma.`);pop(p.x,p.y,"✨ "+drop,"#e0b0ff")}
  if(!LawlAssist.empty(pile))dropGround(m,pile);save()}
-function taskKill(m){const t=p.btask;if(!t||m.boss)return;if(m.t.name===BOSSES[t.i].base&&t.c<BOSSES[t.i].n){t.c++;if(t.c===BOSSES[t.i].n)say(`🎯 Tarefa completa! Volte ao Draven para liberar ${BOSSES[t.i].name}.`);else if(t.c%5===0)say(`🎯 Tarefa: ${t.c}/${BOSSES[t.i].n} ${t.c>1?BOSSES[t.i].base:""}`)}}
+function taskKill(m){const t=p.btask;if(!t||m.boss)return;if(m.t.name===BOSSES[t.i].task&&t.c<BOSSES[t.i].n){t.c++;if(t.c===BOSSES[t.i].n)say(`🎯 Tarefa completa! Volte ao Draven para liberar ${BOSSES[t.i].name}.`);else if(t.c%5===0)say(`🎯 Tarefa: ${t.c}/${BOSSES[t.i].n} ${BOSSES[t.i].task}`)}}
 function bossAura(ctx,x,y,tile,T){ctx.save();const r=tile*(1.1+Math.sin(T*3)*.08);const g=ctx.createRadialGradient(x,y-tile*.4,0,x,y-tile*.4,r);
  g.addColorStop(0,"rgba(255,60,40,.45)");g.addColorStop(1,"rgba(255,60,40,0)");ctx.fillStyle=g;ctx.fillRect(x-r,y-tile*.4-r,r*2,r*2);ctx.restore()}
 function drawPortals(ctx,ox,oy,CX,CY,tile,T){for(const po of portalsHere()){if(Math.abs(po.x-CX)>14||Math.abs(po.y-CY)>14)continue;
@@ -907,7 +902,7 @@ function drawPortals(ctx,ox,oy,CX,CY,tile,T){for(const po of portalsHere()){if(M
  const lb=po.kind==="out"?"🌀 Saída":(po.open?"🌀 ":"🔒 ")+BOSSES[po.i].name;ctx.strokeText(lb,x,y-tile*.7);ctx.fillStyle=po.kind==="out"?"#9fd0ff":po.open?"#e0b0ff":"#c88";ctx.fillText(lb,x,y-tile*.7);ctx.restore()}}
 function openTasks(){
  const t=p.btask,keys=p.bossKey||{};
- const rows=BOSSES.map((B,i)=>{const Z=ZONES[i],lock=p.level<B.rec,active=t&&t.i===i,done=active&&t.c>=B.n,kills=(p.bossKills||{})[i]||0;
+ const rows=BOSSES.map((B,i)=>{const Z=ZONES[B.zi],lock=p.level<B.rec,active=t&&t.i===i,done=active&&t.c>=B.n,kills=(p.bossKills||{})[i]||0;
   let act;
   if(keys[i])act=`<span class="small" style="color:var(--green)">🔑 Acesso liberado</span>`;
   else if(done)act=`<button data-tk="claim" data-i="${i}">✅ Entregar</button>`;
@@ -916,46 +911,49 @@ function openTasks(){
   return `<div style="border:1px solid var(--border);background:#2a241c;padding:8px;margin:6px 0">
    <div class="row" style="border:0;padding:0"><b style="color:var(--gold)">${B.ic} ${B.name}</b>${act}</div>
    <div class="small">📍 ${Z.name} (Subsolo) · Nível recomendado ${B.rec}${kills?` · Derrotado ${kills}×`:""}</div>
-   <div class="small">Tarefa: derrotar ${B.n}× ${B.base}${active?` — <b style="color:${done?"var(--green)":"var(--text)"}">${t.c}/${B.n}</b>`:""}</div>
+   <div class="small">Tarefa: derrotar ${B.n}× ${B.task}${active?` — <b style="color:${done?"var(--green)":"var(--text)"}">${t.c}/${B.n}</b>`:""}</div>
    ${active?`<div class="npc-bar"><i style="width:${Math.min(100,t.c/B.n*100)}%"></i></div>`:""}
    <div class="small">Recompensa do boss: ${B.ic} ${B.trophy}, 💎 1–3, poções e muita XP</div>${(M=>M?`<div class="small" style="color:#e0b0ff">Item raro: ${M.ic} ${M.item} → montaria ${M.name}${LawlMounts.owns(p,M.id)?" ✓":""}</div>`:"")(LawlMounts.forBoss(i))}</div>`}).join("");
  openModal("Mestre Caçador",`<div class="npc-hero"><img src="/npcs/cacador.jpg" alt="Draven"><div class="cap"><div class="nm">Draven Olho-de-Falcão</div><div class="tt">Mestre Caçador · Guardião dos Portais</div></div></div>
- <div class="npc-say">“${t?(t.c>=BOSSES[t.i].n?"Bom trabalho, caçador. Me entregue a prova e eu abro o portal.":`Ainda faltam ${BOSSES[t.i].n-t.c} ${BOSSES[t.i].base}. Volte quando terminar.`):"Os portais do subsolo levam aos covis dos chefes. Prove seu valor caçando para mim e eu os abro para você."}”</div>
+ <div class="npc-say">“${t?(t.c>=BOSSES[t.i].n?"Bom trabalho, caçador. Me entregue a prova e eu abro o portal.":`Ainda faltam ${BOSSES[t.i].n-t.c} ${BOSSES[t.i].task}. Volte quando terminar.`):"Os portais do subsolo levam aos covis dos chefes. Prove seu valor caçando para mim e eu os abro para você."}”</div>
  <p class="small">Como funciona: aceite uma tarefa, cace os monstros no subsolo da área, volte aqui para entregar e use o portal roxo 🌀 ao lado da escada do subsolo. Dentro da sala, o portal azul te traz de volta ao mesmo lugar. Cada vitória consome o acesso.</p>${rows}`,"tasks");
  $("#modalBody").onclick=e=>{const b=e.target.closest("[data-tk]");if(!b||b.disabled)return;const i=+b.dataset.i,a=b.dataset.tk,B=BOSSES[i];
-  if(a==="take"&&!p.btask&&p.level>=B.rec){p.btask={i,c:0};say(`🎯 Tarefa aceita: derrote ${B.n}× ${B.base} no subsolo de ${ZONES[i].name}.`)}
+  if(a==="take"&&!p.btask&&p.level>=B.rec){p.btask={i,c:0};say(`🎯 Tarefa aceita: derrote ${B.n}× ${B.task} no subsolo de ${ZONES[B.zi].name}.`)}
   if(a==="drop"){delete p.btask;say("🎯 Tarefa cancelada.")}
-  if(a==="claim"&&p.btask&&p.btask.i===i&&p.btask.c>=B.n){delete p.btask;p.bossKey??={};p.bossKey[i]=true;say(`🔑 Portal de ${B.name} liberado! Vá ao subsolo de ${ZONES[i].name}.`)}
+  if(a==="claim"&&p.btask&&p.btask.i===i&&p.btask.c>=B.n){delete p.btask;p.bossKey??={};p.bossKey[i]=true;say(`🔑 Portal de ${B.name} liberado! Vá ao subsolo de ${ZONES[B.zi].name}.`)}
   save();renderUI();openTasks()}}
 window.__lawlBoss={enterBoss,exitBoss,openTasks};
 function genMap(){
- /* Faixas de mata entre a cidade e as áreas de caça do norte (a linha y=22 fica livre como trilha) */
+ /* Faixas de mata entre a cidade e o norte (a linha y=22 fica livre como trilha) */
  const FOREST_BELTS=[[18,1,21,21],[51,1,55,21],[75,1,78,19],[1,20,17,21],[56,20,98,21]],forestBelt=(x,y)=>FOREST_BELTS.some(([a,b,c,d])=>x>=a&&x<=c&&y>=b&&y<=d);
+ /* O sorteio antigo (semente 42) só roda no recorte original 160×108, na mesma ordem, para Lawl continuar igual; o resto do mundo vem do LawlWorld. */
  let seed=42;const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
  map=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>{
-  let t=0,v=rnd();if(!x||!y||x===W-1||y===H-1)t=1;else if(v<.09)t=2;else if(v<.11)t=1;
+  let t=0;if(x<160&&y<108){const v=rnd();if(!x||!y)t=1;else if(v<.09)t=2;else if(v<.11)t=1}
   if(Math.hypot(x-12,y-46)<5)t=1;
   if(Math.abs(x-30)<=5&&Math.abs(y-30)<=5){t=3;if((Math.abs(x-30)===5||Math.abs(y-30)===5)&&x!==30&&y!==30)t=4}
   if(training(x,y)){t=3;if(x===36||x===41||y===26||y===34){if(!(x===36&&y===30))t=4}}
   if(t!==1&&forestBelt(x,y))t=((x*73856093^y*19349663)>>>0)%100<36?2:0;
   if(depotArea(x,y)){t=3;if(x===43||x===47||y===27||y===33){if(!(x===43&&y===30))t=4}}
-  for(const z of ZONES){if(x>=z.x1&&x<=z.x2&&y>=z.y1&&y<=z.y2){const edge=x===z.x1||x===z.x2||y===z.y1||y===z.y2,gate=((y===z.y1||y===z.y2)&&Math.abs(x-z.cx)<=1)||((x===z.x1||x===z.x2)&&Math.abs(y-z.cy)<=1);if(edge)t=gate?0:4;else if(Math.abs(x-z.cx)<=1&&Math.abs(y-z.cy)<=1)t=0}}
-  return LawlSeafaring.terrain(x,y,t)}));
- // floor 0 stairs + gate approach
- for(const z of ZONES){map[z.cy][z.cx]=5;for(const [gx,gy,dx,dy] of [[z.cx,z.y1,0,-1],[z.cx,z.y2,0,1],[z.x1,z.cy,-1,0],[z.x2,z.cy,1,0]])for(let i=0;i<6;i++)for(let k=-1;k<=1;k++){/* portões de 3 SQM: abre a trilha pela mata até a cidade */const yy=gy+dy*i+(dx?k:0),xx=gx+dx*i+(dy?k:0),r=map[yy];if(r&&r[xx]!==undefined&&!(xx===0||yy===0||xx===W-1||yy===H-1)&&r[xx]!==4&&r[xx]!==3)r[xx]=0}}
- // underground
+  return LawlWorld.terrain(x,y,LawlSeafaring.terrain(x,y,t))}));
+ LawlWorld.buildCities(map);LawlWorld.buildBridges(map);
+ /* Áreas de caça: superfície e subsolo com pontos de lure largos (8+ monstros) e corredores de 2, 3 e 4 SQM.
+    A borda é de mata, rocha ou muralha conforme a área, com portões de 3 SQM no meio de cada lado. */
  const under=Array.from({length:H},()=>Array(W).fill(6));
- for(const z of ZONES){for(let y=z.y1+1;y<z.y2;y++)for(let x=z.x1+1;x<z.x2;x++)under[y][x]=rnd()<.08?6:7;
-  for(let y=z.cy-1;y<=z.cy+1;y++)for(let x=z.cx-1;x<=z.cx+1;x++)under[y][x]=7;under[z.cy][z.cx]=8}
- // Lawl's original hunting caves: organic tunnels, lure chambers and dead-end spurs (same layout for every player)
- ZONES.forEach((z,i)=>{if(z.biome)return;z.lures=LawlCaves.carve(under,z,9001+i*7919);for(let y=z.cy-1;y<=z.cy+1;y++)for(let x=z.cx-1;x<=z.cx+1;x++)under[y][x]=7;under[z.cy][z.cx]=8});
- for(const z of ZONES)under[z.cy][z.cx+2]=7;
+ ZONES.forEach((z,i)=>{const wall=z.wall||2;
+  z.luresTop=LawlCaves.carveHunt(map,z,7001+i*104729,{floor:0,rock:wall,gates:true});
+  for(let y=z.y1;y<=z.y2;y++)for(let x=z.x1;x<=z.x2;x++){const edge=x===z.x1||x===z.x2||y===z.y1||y===z.y2;if(!edge)continue;
+   const gate=((y===z.y1||y===z.y2)&&Math.abs(x-z.cx)<=1)||((x===z.x1||x===z.x2)&&Math.abs(y-z.cy)<=1);map[y][x]=gate?0:wall}
+  map[z.cy][z.cx]=5;
+  z.lures=LawlCaves.carveHunt(under,z,9001+i*7919);under[z.cy][z.cx]=8;under[z.cy][z.cx+2]=7});
  const boss=Array.from({length:H},()=>Array(W).fill(6));
  BOSSES.forEach((B,i)=>{const rx=BROOM(i).x,ry=BROOM(i).y;for(let y=ry+1;y<ry+10;y++)for(let x=rx+1;x<rx+10;x++)boss[y][x]=7});
  maps=[map,under,boss];mobsZ[2]=mobsZ[2]||[];
  // clear the two trees that grew right beside the depot door (x42,y30-31)
  map[30][42]=0;map[31][42]=0;
  buildTownDistricts(map);
+ /* Estradas de pedra de 3 SQM ligam cada portão de área de caça e cada ponte à cidade mais próxima. */
+ LawlWorld.roads(map,ZONES);
 }
 /* Bairros de Lawl: ruas de pedra (3), paredes de casa (9) e piso de madeira (10) */
 const DISTRICTS=[[22,2,50,24],[3,22,24,39],[48,23,94,39],[33,36,54,47],[33,48,47,61],[23,61,47,70]];
@@ -970,6 +968,8 @@ const HOUSES=(()=>{const h=[];
  // As duas casas largas ficam na expansão sul, sem atravessar o mar.
  h.push([23,62,10,8,"n"],[35,62,10,8,"n"]);
  for(const x of [67,76,85])h.push([x,23,8,8,"s",1],[x,32,8,8,"n",6]);
+ // Casas das cidades novas (Kharum, Glacira e Umbra) vêm depois das 22 de Lawl: lawl-23 em diante.
+ h.push(...LawlWorld.houses);
  return h})();
 const HOUSE_LIST=LawlHousing.catalog(HOUSES),houseLeases=new Map();
 let houseLoaded=false,houseBusy=false,lastHouseOffer="";
@@ -1000,15 +1000,18 @@ function buildTownDistricts(M){
   const [ddx,ddy]=LawlHousing.doorAt(x0,y0,w,hh,door,off);M[ddy][ddx]=10}
  // canteiros verdes nas esquinas
  for(const [x,y] of [[26,18],[37,18],[43,18],[18,30],[48,42],[42,42]])if(M[y]?.[x]===3)M[y][x]=0}
-// Underground of Lawl's original caves holds more monsters, gathered mostly in lure chambers.
-function zoneMobCount(Z,z){return Math.max(z===1&&Z.lures?Math.round(Z.n*1.4):Z.n,1+(z?Z.wikiSub:Z.wikiTop)?.length||0)}
+// Monstros por andar de cada área: [superfície, subsolo].
+function zoneMobCount(Z,z){return Z.nz?Z.nz[z]:Z.n}
+/* Os primeiros 8 monstros de cada ponto de lure largo nascem dentro dele; o resto se espalha pela área. */
 function spawn(zi,z,name){
  const Z=ZONES[zi];if(!Z||!maps[z])return;const M=maps[z],list=mobsZ[z],pool=[z?Z.sub:Z.top,...((z?Z.wikiSub:Z.wikiTop)||[])];Z._spawnSeq??=[0,0];const t=MON(name||pool[Z._spawnSeq[z]++%pool.length]);if(!t)return;
+ const quota=(Z.spots||[0,0])[z]||0,big=((z?Z.lures:Z.luresTop)||[]).filter(c=>c.big).slice(0,quota);let spot=-1;
+ for(let i=0;i<big.length&&spot<0;i++)if(list.filter(m=>m.zone===zi&&m.spot===i).length<8)spot=i;
  for(let k=0;k<100;k++){
-  const lure=z===1&&Z.lures&&Z.lures.length&&k<60&&Math.random()<.75?LawlCaves.pickLureTile(Z.lures,Math.random):null;
+  const lure=spot>=0&&k<80?big[spot].tiles[Math.floor(Math.random()*big[spot].tiles.length)]:null;
   const x=lure?lure[0]:Z.x1+1+Math.floor(Math.random()*(Z.x2-Z.x1-1)),y=lure?lure[1]:Z.y1+1+Math.floor(Math.random()*(Z.y2-Z.y1-1)),tt=M[y][x];
   if(!(tt===0||tt===7)||Math.hypot(x-Z.cx,y-Z.cy)<3||list.some(m=>m.x===x&&m.y===y)||(p.z===z&&p.x===x&&p.y===y))continue;
-  list.push({id:MOBP+(++mobSeq),x,y,t,hp:t.hp,cd:1,mv:0,zone:zi,z});return;
+  const m={id:MOBP+(++mobSeq),x,y,t,hp:t.hp,cd:1,mv:0,zone:zi,z};if(lure)m.spot=spot;list.push(m);return;
  }
 }
 let mobSeq=0,respawnQ=[];const MOBP=Math.random().toString(36).slice(2,6)+"-";
@@ -1024,6 +1027,8 @@ function createPlayer(name,voc){
  p.outfit=LawlOutfits.normalize(null,voc);p.stance="balanced";p.hp=maxHp();p.mp=maxMp();save();
 }
 const DAY=864e5,PREMIUM_PLANS=[{days:7,gems:70},{days:30,gems:250},{days:90,gems:650}];
+/* Monstros da wiki: chance de gema cresce com a vida do monstro (máx. 20%). */
+const gemChance=t=>GEM_DROP[t.name]??Math.min(.2,(t.hp||0)/20000);
 const GEM_DROP={"Rato Gigante":.015,Aranha:.03,"Orc Guerreiro":.07,Lagarto:.05,Serpente:.08,"Múmia":.12,Troll:.1,Golem:.2,"Escorpião":.08,Vampiro:.3,"Demônio":1,Rato:.01,Lobo:.02,Orc:.05,Esqueleto:.1,"Dragão":1};
 function isPremium(){return p&&p.premiumUntil>Date.now()}
 function premiumLeft(){const ms=p.premiumUntil-Date.now();if(ms<=0)return "Free Account";const d=Math.floor(ms/DAY),h=Math.floor(ms%DAY/36e5);return `${d}d ${h}h restantes`}
@@ -1084,10 +1089,10 @@ function startGame(){
  for(const k of FX_KEYS)delete p[k];genMap();mobsZ=[[],[],[]];mobs=mobsZ[0];npcs=npcsTop=[
   {name:"⚗️ Mirela",id:"potions",x:26,y:26,color:"#d94f8a"},{name:"🔨 Thorgar",id:"smith",x:34,y:26,color:"#777"},
   {name:"💰 Ziran",id:"trader",x:26,y:34,color:"#2f8f9d"},{name:"⚔️ Cap. Brisa",id:"trainer",x:34,y:34,color:"#c96a2b"},{name:"📦 Bartolo",id:"depot",x:45,y:28,color:"#8a6a3a"},{name:"🎯 Draven",id:"tasks",x:28,y:28,color:"#3a3a4a"},{name:"✨ Selene",id:"enchanter",x:32,y:28,color:"#7a4fd0"},
-  ...LawlSeafaring.ports.map(q=>({name:"⚓ "+q.captain,id:"boat:"+q.id,x:q.x,y:q.y,color:LawlSeafaring.palette.pirate})),
+  ...LawlSeafaring.ports.map(q=>({name:"⚓ "+q.captain,id:"boat:"+q.id,x:q.x,y:q.y,color:LawlSeafaring.palette.pirate})),...LawlWorld.npcs.map(n=>({...n})),
   {name:"⚗️ Liora",id:"aurora:potions",x:117,y:27,color:LawlSeafaring.palette.specter},{name:"🔨 Nereu",id:"aurora:smith",x:129,y:27,color:LawlSeafaring.palette.stone},{name:"💰 Salma",id:"aurora:trader",x:117,y:35,color:LawlSeafaring.palette.snake},{name:"📦 Ivo",id:"aurora:depot",x:129,y:35,color:LawlSeafaring.palette.wood}];
  [[38,27],[40,27],[40,30],[38,33],[40,33]].forEach(([x,y])=>mobs.push({x,y,t:{name:"Boneco",hp:1,dmg:0,xp:0,gold:0,color:"#b08850",size:.6},hp:1,cd:0,mv:0,dummy:true}));
- ZONES.forEach((Z,i)=>{for(let k=0;k<Z.n;k++)spawn(i,0);for(let k=0;k<zoneMobCount(Z,1);k++)spawn(i,1)});p.z??=0;if(p.z===2){const r=p.bossRet;p.z=r?r.z:0;p.x=r?r.x:30;p.y=r?r.y:30}if(!walkable(p.x,p.y)&&!maps[p.z]){p.z=0}setFloor(p.z);if(!walkable(p.x,p.y)&&p.z===1){const Z=ZONES[zoneAt(p.x,p.y)];if(Z){let b=null,bd=1e9;for(let y=Z.y1+1;y<Z.y2;y++)for(let x=Z.x1+1;x<Z.x2;x++){const d=Math.hypot(x-p.x,y-p.y);if(maps[1][y][x]===7&&d<bd){bd=d;b=[x,y]}}if(b){p.x=b[0];p.y=b[1]}}}if(!walkable(p.x,p.y)){setFloor(0);p.x=30;p.y=30}p.stairLock=true;say(`Bem-vindo a Lawl, ${p.name}!`);syncSkillLevels();gmCatchUp();requestAnimationFrame(loop);renderUI();
+ ZONES.forEach((Z,i)=>{for(let k=0;k<zoneMobCount(Z,0);k++)spawn(i,0);for(let k=0;k<zoneMobCount(Z,1);k++)spawn(i,1)});p.z??=0;if(p.z===2){const r=p.bossRet;p.z=r?r.z:0;p.x=r?r.x:30;p.y=r?r.y:30}if(!walkable(p.x,p.y)&&!maps[p.z]){p.z=0}setFloor(p.z);if(!walkable(p.x,p.y)&&p.z===1){const Z=ZONES[zoneAt(p.x,p.y)];if(Z){let b=null,bd=1e9;for(let y=Z.y1+1;y<Z.y2;y++)for(let x=Z.x1+1;x<Z.x2;x++){const d=Math.hypot(x-p.x,y-p.y);if(maps[1][y][x]===7&&d<bd){bd=d;b=[x,y]}}if(b){p.x=b[0];p.y=b[1]}}}if(!walkable(p.x,p.y)){setFloor(0);p.x=30;p.y=30}p.stairLock=true;say(`Bem-vindo a Lawl, ${p.name}!`);syncSkillLevels();gmCatchUp();requestAnimationFrame(loop);renderUI();
 }
 function renderUI(){
  if(!p)return;
@@ -1103,7 +1108,7 @@ function renderUI(){
  $("#talkBtn").classList.toggle("hidden",!npc);$("#inventoryBtn").classList.toggle("hidden",!!npc);
  if(npc){hudTile($("#talkBtn"),"💬",npc.name,"");$("#talkBtn").onclick=()=>talkTo(npc)}
  const house=nearbyHouse();if(house&&!npc){$("#talkBtn").classList.remove("hidden");hudTile($("#talkBtn"),"🔑",house.name,"");$("#talkBtn").onclick=()=>openHouse(house);$("#inventoryBtn").classList.add("hidden")}
- $("#safe").textContent=safe(p.x,p.y)?(training(p.x,p.y)?`Treino ${trainMult()}× · ${Math.ceil(p.trainTime/60)} min`:(LawlSeafaring.isCity(p.x,p.y)?"Porto Aurora · Zona segura":LawlSeafaring.isDock(p.x,p.y)?"Porto · Zona segura":inHouse(p.x,p.y)?"Casa · Zona segura":"Lawl · Zona segura")):"";
+ $("#safe").textContent=safe(p.x,p.y)?(training(p.x,p.y)?`Treino ${trainMult()}× · ${Math.ceil(p.trainTime/60)} min`:(LawlSeafaring.isCity(p.x,p.y)?"Porto Aurora · Zona segura":LawlWorld.safeAt(p.x,p.y)?LawlWorld.cityOf(p.x,p.y)+" · Zona segura":LawlSeafaring.isDock(p.x,p.y)?"Porto · Zona segura":inHouse(p.x,p.y)?"Casa · Zona segura":"Lawl · Zona segura")):"";
  $("#log").innerHTML=logs.map((x,i)=>`<div style="opacity:${1-i*.18}">${escapeHtml(x)}</div>`).join("");
  $("#questTopBtn").classList.toggle("has-claim",hasClaimableQuests());
  if(modalKind==="stats")refreshHubStats();renderHubHead();
@@ -1167,7 +1172,8 @@ function update(dt){
  }}
  const net=window.__lawlMobNet,shared=!!(net&&net.shared());
  for(const m of [...mobs]){
-  if(m.dummy)continue;m.cd-=dt;const d=dist(m,p),aggro=mobAggro(m,!!LawlMonsterAI.target(m,[p],q=>!safe(q.x,q.y)));
+  /* Só os monstros perto do jogador pensam aqui; os distantes ficam parados até alguém chegar (mapa grande, leve no celular). */
+  if(m.dummy||Math.abs(m.x-p.x)>24||Math.abs(m.y-p.y)>24)continue;m.cd-=dt;const d=dist(m,p),aggro=mobAggro(m,!!LawlMonsterAI.target(m,[p],q=>!safe(q.x,q.y)));
   const ready=(!shared||m.boss)&&LawlMonsterAI.tick(m,dt,aggro)&&!((mobFx.get(m)?.para||0)>sNow());
   if(m.t.official){runMonsterAbilities(m,dt,aggro,(!shared||net.isHost()));}
   if(!m.t.official&&aggro&&d<=1&&m.cd<=0&&!isGM()){
@@ -1203,7 +1209,7 @@ function hit(m,dmg,src,col){
 function reward(m){const auto=LawlAssist.autoLoot(p,Date.now()),pile=LawlAssist.pile();
  if(m.t.official){rewardWikiMonster(m,auto,pile);return}
  {const k=isPremium()?1.5:1,gx=LawlMarket.xp(m.t.xp,p,Date.now()),gg=Math.round(m.t.gold*k);p.xp+=gx;if(auto)p.gold+=gg;else pile.gold+=gg;
-  say(`${m.t.name} derrotado: +${gx} XP, +${gg} ouro${auto||!gg?"":" (no chão)"}${k>1?" 👑":""}`);window.__lawlKill&&window.__lawlKill(m,gx,gg);if(Math.random()<(GEM_DROP[m.t.name]||0)){p.gems++;say("💎 Você encontrou uma gema!")}}updateQuestKill(m.t.name);taskKill(m);
+  say(`${m.t.name} derrotado: +${gx} XP, +${gg} ouro${auto||!gg?"":" (no chão)"}${k>1?" 👑":""}`);window.__lawlKill&&window.__lawlKill(m,gx,gg);if(Math.random()<gemChance(m.t)){p.gems++;say("💎 Você encontrou uma gema!")}}updateQuestKill(m.t.name);taskKill(m);
  if(Math.random()<.15){if(auto&&bagRoom({hpPot:1}))p.hpPot++;else pile.hpPot++}
  if(m.t.loot&&Math.random()<.6){if(auto)p.loot[m.t.loot]=(p.loot[m.t.loot]||0)+1;else pile.loot[m.t.loot]=(pile.loot[m.t.loot]||0)+1}
  for(const nm of LawlItems.rollLootDrops(mobDropName(m))){if(auto)p.loot[nm]=(p.loot[nm]||0)+1;else pile.loot[nm]=(pile.loot[nm]||0)+1;say(`${LOOT_ICONS[nm]||"📦"} ${m.t.name} deixou cair ${nm}${auto?"":" no chão"}!`)}
@@ -1662,6 +1668,8 @@ function draw(ctx,w,h){
    if(type===5)R("#6fc24c",sx,sy,tile+1,tile+1);else{R("#6e5c47",sx,sy,tile+1,tile+1);if((x+y)&1)R("rgba(255,255,255,.03)",sx,sy,tile+1,tile+1);if(hsh(x,y)<.3){R("#54463a",sx+4*u,sy+6*u,3*u,2*u);R("#8f7c62",sx+4*u,sy+6*u,2*u,u*.6)}}
    if(type===5){R("#1c1712",sx+2*u,sy+2*u,12*u,12*u);for(let i=0;i<4;i++){R("#9a8a70",sx+2*u,sy+(3+i*3)*u,(12-i*3)*u,1.5*u);R("#c8b896",sx+2*u,sy+(3+i*3)*u,(12-i*3)*u,u*.5)}}
    if(type===8){for(let i=0;i<4;i++){R(["#b8a888","#a89878","#988868","#887858"][i],sx+(2+i*2)*u,sy+(2+i*3)*u,(12-i*2)*u,3*u);R("rgba(255,255,255,.25)",sx+(2+i*2)*u,sy+(2+i*3)*u,(12-i*2)*u,u*.6)}ctx.fillStyle="rgba(255,230,150,.25)";ctx.fillRect(sx,sy,tile,tile)}
+  }else if((type===11||type===12)&&LawlWorld.drawTile(ctx,sx,sy,tile,x,y,type)){
+  }else if(p.z===0&&(type===0||type===2)&&LawlWorld.drawGround(ctx,sx,sy,tile,x,y)){if(type===2)trees.push([sx,sy,x,y]);
   }else{
    R(["#6fc24c","#74c851","#6abc47","#78cc56"][Math.floor(hsh(x,y)*4)],sx,sy,tile+1,tile+1);const gn=hsh(x>>2,y>>2,3);
    if(gn<.3)R("rgba(30,100,20,.13)",sx,sy,tile+1,tile+1);else if(gn>.78)R("rgba(230,255,160,.10)",sx,sy,tile+1,tile+1);if((x+y)&1)R("rgba(255,255,255,.035)",sx,sy,tile+1,tile+1);
@@ -1675,7 +1683,7 @@ function draw(ctx,w,h){
   }
  }
  if(p.z===0){const gold=getComputedStyle(document.documentElement).getPropertyValue("--gold"),wood=getComputedStyle(document.documentElement).getPropertyValue("--panel"),border=getComputedStyle(document.documentElement).getPropertyValue("--border");for(const h of HOUSE_LIST){if(Math.abs(h.dx-CX)>vx||Math.abs(h.dy-CY)>vy)continue;const sx=ox+(h.dx-CX)*tile,sy=oy+(h.dy-CY)*tile;R(border,sx,sy,tile,tile);R(wood,sx+2*u,sy+u,12*u,14*u);R(gold,sx+10*u,sy+9*u,2*u,2*u);ctx.fillStyle=gold;ctx.font=`${Math.max(10,tile*.25)}px monospace`;ctx.textAlign="center";ctx.fillText(LawlHousing.valid(houseLeases.get(h.id),Date.now())?"🔑":"🔒",sx+tile/2,sy+7*u)}}
- if(p.z===0){for(const q of LawlSeafaring.ports)if(Math.abs(q.x-CX)<vx+3&&Math.abs(q.y+4-CY)<vy+3)LawlSeafaring.drawBoat(ctx,ox+(q.x-CX)*tile,oy+(q.y+4-CY)*tile,tile)}
+ if(p.z===0){for(const q of ALL_PORTS)if(Math.abs(q.x-CX)<vx+3&&Math.abs(q.y+4-CY)<vy+3)LawlSeafaring.drawBoat(ctx,ox+(q.x-CX)*tile,oy+(q.y+4-CY)*tile,tile)}
  drawSpellGround(ctx,ox,oy,CX,CY,tile,T);window.lawlAreaFx&&lawlAreaFx.draw(ctx,ox,oy,CX,CY,tile,T,p.x,p.y,walkable);
  if(tapFx){const k=(performance.now()-tapFx.t)/700;if(k>=1)tapFx=null;else{const tx=ox+(tapFx.x-CX)*tile+tile/2,ty=oy+(tapFx.y-CY)*tile+tile*.6;ctx.save();ctx.strokeStyle="#5ff07a";ctx.translate(tx,ty);ctx.scale(1,.5);for(let i=0;i<3;i++){const r=tile*(.12+i*.12+k*.18);ctx.globalAlpha=Math.max(0,(1-k)*(1-i*.25));ctx.lineWidth=Math.max(1.5,tile*.05);ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.stroke()}ctx.restore()}}drawPortals(ctx,ox,oy,CX,CY,tile,T);const ents=[];
  mobs.forEach(m=>{if(Math.abs(m.x-p.x)<=vx&&Math.abs(m.y-p.y)<=vy&&!LawlMonsters.hidden(m))ents.push({y:m.y,f:()=>{const q=smoothPos(m,_dt,1/LawlMonsterAI.profile(m).step*1.05,undefined,true);let bsc=0;if(m.boss){const bx=ox+(q.x-CX)*tile+tile/2,by=oy+(q.y-CY)*tile+tile*.9;bossAura(ctx,bx,by,tile,T);ctx.save();ctx.translate(bx,by);ctx.scale(1.6,1.6);ctx.translate(-bx,-by);bsc=1}actor(q.x,q.y,m.dummy?"dummy":(m.kind||m.t.name),m.t.color,m.t.name,m.dummy?0:m.hp,m.dummy?0:m.t.hp,m===target,undefined,undefined,m);if(bsc)ctx.restore()}})});
@@ -1691,6 +1699,7 @@ function draw(ctx,w,h){
  for(const a of allies)if(a.z===p.z&&Math.abs(a.x-p.x)<=vx&&Math.abs(a.y-p.y)<=vy)ents.push({y:a.y,f:()=>{const q=smoothPos(a,_dt,3,undefined,true);actor(q.x,q.y,a.kind,a.color,a.name,a.hp,a.max,false,a.familiar?LawlOutfits.normalize(null,a.kind.slice(5)):undefined,a.familiar?"south":undefined,a)}});
  ents.push({y:p.y,f:()=>{ctx.save();if(isGM()&&gmInvisible||SFX.invis>sNow())ctx.globalAlpha=.35;lawlCurSkull=window.__lawlMySkull?window.__lawlMySkull():"";const il=SFX.ill;if(il)actor(CX,CY,il.kind,il.color,p.name,p.hp,maxHp(),false,undefined,undefined,p);else actor(CX,CY,"hero:"+p.voc,vocations[p.voc].color,isGM()?"🛡️ GameMaster":p.name,p.hp,maxHp(),false,p.outfit,p.dir,p,p.mount);lawlCurSkull="";ctx.restore()}});
  trees.forEach(([sx,sy,x,y])=>ents.push({y,f:()=>{
+  if(LawlWorld.drawTree(ctx,sx,sy,u,x,y,T))return;
   const sw=Math.sin(T*1.2+x*.7)*u*.5;
   ctx.fillStyle="rgba(0,0,0,.28)";ctx.beginPath();ctx.ellipse(sx+8*u,sy+14.6*u,6.5*u,2*u,0,0,7);ctx.fill();
   R("#2a170a",sx+5.8*u,sy+9*u,4.4*u,6.4*u);R("#8a5a2c",sx+6.5*u,sy+9*u,3*u,5.8*u);R("#5e3a1a",sx+8.5*u,sy+9*u,u,5.8*u);R("#b07a42",sx+6.8*u,sy+10*u,.8*u,3*u);
@@ -1832,7 +1841,7 @@ function questsHtml(){
 function openGrind(sub){if(sub)grindSub=sub;let body="";
  if(grindSub==="tasks")body=`<p class="hub-center">Pontos de Tarefa: 0</p><div class="task-row">${Array.from({length:5},()=>`<button class="hx task-card" data-soon><span class="plus">✚</span><span class="lb">Iniciar nova Tarefa</span></button>`).join("")}</div>`;
  else if(grindSub==="missions")body=questsHtml();
- else if(grindSub==="bestiary"){const seen=new Set(),list=[];ZONES.forEach(z=>[z.top,z.sub].forEach(n=>{if(n&&!seen.has(n)){seen.add(n);list.push([n,z.name])}}));
+ else if(grindSub==="bestiary"){const seen=new Set(),list=[];ZONES.forEach(z=>[z.top,...z.wikiTop,z.sub,...z.wikiSub].forEach(n=>{if(n&&!seen.has(n)){seen.add(n);list.push([n,z.name])}}));
   body=`<p class="hub-center">Monstros descobertos: 0 / ${list.length}</p><div class="st-grid">${list.map(([n,z])=>`<button class="hx st-card" data-soon><span class="ic">❔</span><span class="nm">${escapeHtml(n)}</span><span class="small">${escapeHtml(z)}</span></button>`).join("")}</div>`}
  else body=`<p class="hub-center">Baús: 0</p><div class="st-grid">${[["📦","Baú de Madeira"],["🧳","Baú de Prata"],["💰","Baú de Ouro"],["👑","Baú Lendário"]].map(([ic,n])=>`<div class="st-card"><span class="ic">${ic}</span><span class="nm">${n}</span><span class="small">Você tem 0</span><button class="hx hub-btn g" data-soon>Abrir</button></div>`).join("")}</div>`;
  openModal("📜 Grind",hubSub(GRIND_SUBS,grindSub,"grind")+body,"grind");
@@ -2017,7 +2026,7 @@ function itemsList(cat){const L=LawlItems,out=[];const vn=v=>L.VOC_NAME[v]||v;
 const ELEMENTS=[["death","Morte"],["earth","Terra"],["energy","Energia"],["fire","Fogo"],["ice","Gelo"],["phys","Físico"]];let itemsEl="fire";
 function elementsList(k){const L=LawlItems,S=LawlSpells,out=[],nm=(ELEMENTS.find(e=>e[0]===k)||[k,k])[1];
  const mons=[...monsters].sort((a,b)=>a.hp-b.hp).map(t=>({t,r:S.resist(t.name,k)})).filter(x=>x.r!==1).sort((a,b)=>b.r-a.r);
- mons.forEach(({t,r})=>{const pct=Math.round(r*100),bs=BOSSES.filter(B=>B.base===t.name).map(B=>B.name);
+ mons.forEach(({t,r})=>{const pct=Math.round(r*100),bs=BOSSES.filter(B=>B.task===t.name||B.base===t.name).map(B=>B.name);
   out.push({ic:r===0?"🚫":r>1?"🔺":"🔻",nm:t.name,info:`Recebe ${pct}% do dano de ${nm} · ${r===0?"imune":r>1?"fraco":"resistente"}`,meta:`Monstro · ${fmtN(t.hp)} HP`,src:bs.length?`Chefe com a mesma resistência: ${bs.join(", ")}`:"Vale para armas, flechas, varinhas, magias e runas"})});
  equipment.forEach(e=>{if(!gearOn(e))return;const g=L.shieldByName(e.name)||e,v=g&&g.res&&g.res[k];if(!(v>0))return;
   out.push({ic:SLOT_ICON[e.slot]||"🛡️",nm:e.name,info:`Resistência a ${nm} +${v}%`,meta:`Nv ${e.lvl} · ${e.slot} · ${e.voc.map(x=>L.VOC_NAME[x]||x).join(", ")}`,src:"Reduz o dano desse elemento que você recebe (máx. "+L.RES_CAP+"% somando tudo)"})});
@@ -2064,21 +2073,37 @@ function openOptions(sub){if(sub)optSub=sub;let body;
   if(e.target.closest("[data-opt-acct]")){openOptions("account");return}
   if(e.target.closest("[data-switch]")){$("#charBtn").onclick();return}
   if(e.target.closest("[data-soon]"))return;menuClick(e)}}
+function nearestPort(){return ALL_PORTS.reduce((b,q)=>Math.hypot(q.x-p.x,q.y-p.y)<Math.hypot(b.x-p.x,b.y-p.y)?q:b)}
 function openPorts(){
- const q=LawlSeafaring.ports.find(q=>q.id===(p.x>=100?"aurora":"lawl"));
- openModal("⚓ Portos e viagens",`<div class="npc-say">${q.name} · ${q.captain}</div><div class="row"><span>${q.name} → ${LawlSeafaring.ports.find(v=>v.id===q.to).name}</span><b>🪙 ${q.fare}</b></div><p class="small">👑 Viagens de barco entre cidades são exclusivas para contas Premium.</p><button id="walkToPort" class="npc-main" ${p.z!==0?"disabled":""}>⚓ Ir até o capitão</button><h3>Porto Aurora · Áreas de caça</h3>${LawlSeafaring.zones.map(z=>`<div class="row"><span><b>${z.name}</b><br><span class="small">${z.top} · Subsolo: ${z.sub}</span></span><span class="small">Nv ${z.rec}</span></div>`).join("")}`,"ports");
+ const q=nearestPort(),region=LawlWorld.cityOf(q.x,q.y),zs=ZONES.filter(z=>z.city===region);
+ openModal("⚓ Portos e viagens",`<div class="npc-say">${q.name} · ${q.captain}</div>${LawlWorld.routes(q.id,ALL_PORTS).map(r=>`<div class="row"><span>${q.name} → ${r.to.name}</span><b>🪙 ${r.fare}</b></div>`).join("")}<p class="small">👑 Viagens de barco entre cidades são exclusivas para contas Premium.</p><button id="walkToPort" class="npc-main" ${p.z!==0?"disabled":""}>⚓ Ir até o capitão</button><h3>${escapeHtml(region)} · Áreas de caça</h3>${zs.map(z=>`<div class="row"><span><b>${z.name}</b>${z.premium?" 👑":""}<br><span class="small">${[z.top,...z.wikiTop].join(", ")} · Subsolo: ${[z.sub,...z.wikiSub].join(", ")}</span></span><span class="small">Nv ${z.rec}</span></div>`).join("")}`,"ports");
  $("#walkToPort").onclick=()=>{closeModal();requestWalk(q.x,q.y+1)};
 }
-function openBoat(id,confirm=false,notice=""){
- const q=LawlSeafaring.ports.find(q=>q.id===id),to=q&&LawlSeafaring.ports.find(v=>v.id===q.to);if(!q||!to)return;
+/* Cada capitão tem várias rotas (LawlWorld.ROUTES); toId abre a confirmação da passagem escolhida. */
+function openBoat(id,toId="",notice=""){
+ const q=ALL_PORTS.find(q=>q.id===id);if(!q)return;
  move=[0,0];autoPath=[];autoDest=null;
- const check=()=>LawlSeafaring.quote(p,id,performance.now(),lastCombatAt,!!(p.tradeEscrow||window.__lawlTradeActive?.()||window.__lawlDuel?.()));
- const result=check(),prem=isPremium();
- openModal("⚓ "+q.captain,`<div class="npc-say">“${confirm?`Passagem para ${to.name} por ${q.fare} moedas. Podemos zarpar?`:`Olá, viajante! Meu barco parte para ${to.name}.` }”</div><div class="row"><span>${q.name} → ${to.name}</span><b>🪙 ${q.fare}</b></div><p class="small">Seu ouro: ${p.gold} · 👑 Passagem exclusiva para contas Premium</p><p class="gm-status" role="status">${escapeHtml(prem?(notice||result.error||""):"Somente contas Premium podem viajar de barco entre cidades. Ative o Premium no botão 💎 acima!")}</p><button id="sail" class="npc-main" ${!prem||result.error?"disabled":""}>${confirm?"Sim, zarpar":"Passagem para "+to.name}</button>${confirm?'<button id="cancelSail" class="npc-main">Não, ficar aqui</button>':""}`,"boat");
- $("#sail").onclick=()=>{if(!isPremium())return openBoat(id,confirm,"Somente contas Premium podem viajar de barco entre cidades.");if(!confirm)return openBoat(id,true);const r=check();if(r.error)return openBoat(id,true,r.error);const candidates=[[to.landing.x,to.landing.y],[to.landing.x-1,to.landing.y],[to.landing.x+1,to.landing.y]];const landing=candidates.find(([x,y])=>maps[0]?.[y]?.[x]===3&&!mobsZ[0].some(m=>m.x===x&&m.y===y)&&!npcsTop.some(n=>n.x===x&&n.y===y));if(!landing)return openBoat(id,true,"O cais está ocupado. Tente novamente.");p.gold-=r.fare;setFloor(0);[p.x,p.y]=landing;p.stairLock=true;p.portLock=false;move=[0,0];floats=[];lastZoneKey="";closeModal();say(`⚓ Você chegou a ${to.name}. Boa viagem!`);save();renderUI()};
- if(confirm)$("#cancelSail").onclick=()=>openBoat(id);
+ const blocked=()=>!!(p.tradeEscrow||window.__lawlTradeActive?.()||window.__lawlDuel?.());
+ const check=t=>LawlWorld.quote(p,ALL_PORTS,id,t,performance.now(),lastCombatAt,blocked());
+ const routes=LawlWorld.routes(id,ALL_PORTS),prem=isPremium(),pick=routes.find(r=>r.to.id===toId);
+ const status=prem?(notice||(pick?check(pick.to.id).error:"")||""):"Somente contas Premium podem viajar de barco entre cidades. Ative o Premium no botão 💎 acima!";
+ const list=routes.map(r=>{const e=check(r.to.id).error;return `<div class="row"><span>${q.name} → ${r.to.name}</span><button data-sail="${r.to.id}" ${!prem||e?"disabled":""}>🪙 ${r.fare}</button></div>`}).join("");
+ openModal("⚓ "+q.captain,`<div class="npc-say">“${pick?`Passagem para ${pick.to.name} por ${pick.fare} moedas. Podemos zarpar?`:"Olá, viajante! Para onde vamos hoje?"}”</div>${pick?`<div class="row"><span>${q.name} → ${pick.to.name}</span><b>🪙 ${pick.fare}</b></div>`:list}<p class="small">Seu ouro: ${p.gold} · 👑 Passagem exclusiva para contas Premium</p><p class="gm-status" role="status">${escapeHtml(status||(!pick&&routes.length&&routes.every(r=>check(r.to.id).error)?check(routes[0].to.id).error:""))}</p>${pick?'<button id="sail" class="npc-main">Sim, zarpar</button><button id="cancelSail" class="npc-main">Não, ficar aqui</button>':""}`,"boat");
+ $("#modalBody").onclick=e=>{const b=e.target.closest("[data-sail]");if(!b||b.disabled)return;openBoat(id,b.dataset.sail)};
+ if(!pick)return;
+ $("#cancelSail").onclick=()=>openBoat(id);
+ $("#sail").onclick=()=>{if(!isPremium())return openBoat(id,toId,"Somente contas Premium podem viajar de barco entre cidades.");const r=check(toId);if(r.error)return openBoat(id,toId,r.error);const to=r.to;const candidates=[[to.landing.x,to.landing.y],[to.landing.x-1,to.landing.y],[to.landing.x+1,to.landing.y]];const landing=candidates.find(([x,y])=>maps[0]?.[y]?.[x]===3&&!mobsZ[0].some(m=>m.x===x&&m.y===y)&&!npcsTop.some(n=>n.x===x&&n.y===y));if(!landing)return openBoat(id,toId,"O cais está ocupado. Tente novamente.");p.gold-=r.fare;setFloor(0);[p.x,p.y]=landing;p.stairLock=true;p.portLock=false;move=[0,0];floats=[];lastZoneKey="";closeModal();say(`⚓ Você chegou a ${to.name}. Boa viagem!`);save();renderUI()};
 }
+/* Sacerdotes das cidades novas: curam de graça fora de combate; o renascimento é sempre no templo de Lawl. */
+function openPriest(id){const n=npcsTop.find(n=>n.id===id),c=LawlWorld.cities.find(c=>id.startsWith(c.id+":"));
+ openModal("✚ "+(n?n.name.replace(/^\S+\s+/,""):"Sacerdote"),`<div class="npc-say">“Bem-vindo ao templo de ${c?c.name:""}. Se você cair em batalha, sua alma volta ao templo de Lawl.”</div><button id="priestHeal" class="npc-main">✚ Pedir uma bênção (curar)</button><p class="gm-status" id="priestStatus" role="status"></p>`,"priest");
+ $("#priestHeal").onclick=()=>{if(performance.now()-lastCombatAt<10000){$("#priestStatus").textContent="Você está em combate. Aguarde 10 segundos.";return}p.hp=maxHp();p.mp=maxMp();$("#priestStatus").textContent="✨ Seus ferimentos foram curados.";renderUI();save()}}
 $("#portsBtn").onclick=()=>p&&openPorts();
+/* Terras Premium (Porto Aurora, Kharum, Glacira e Umbra): contas Free voltam ao templo de Lawl; pontes avisam no portão. */
+let premiumHintAt=0;
+setInterval(()=>{if(!p||isPremium()||isGM()||p.z>1)return;
+ if(LawlWorld.premiumAt(p.x,p.y)){setFloor(0);p.x=30;p.y=30;p.stairLock=true;lastZoneKey="";say("👑 Essa região é exclusiva para contas Premium. Você voltou ao templo de Lawl.");save();renderUI();return}
+ if(p.z===0&&Date.now()-premiumHintAt>8000&&[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>map[p.y+dy]?.[p.x+dx]===12)){premiumHintAt=Date.now();say("👑 Portão Premium: só contas Premium atravessam esta ponte.")}},1500);
 /* ===== Montarias ===== */
 // Magic Chest do wiki: gasta o baú e a Magic Key do mesmo nível e entrega ouro ou um equipamento da lista.
 function openChest(k){const C=LawlItems.chestOf(k);if(!C||!p)return;if(!(p.loot[k]>0)){say("Você não tem esse baú.");return}
@@ -2299,9 +2324,9 @@ var tkxTimer=0,tkxLast="";
 var NPC_BUBBLE_MS=4500;
 const rnd1=a=>a[Math.floor(Math.random()*a.length)];
 const NPC_BYE=["Até logo, aventureiro!","Volte sempre!","Boa caçada!","Cuide-se lá fora!"];
-const NPC_AMBIENT={potions:["Poções fresquinhas! Vida e mana!","Não saia da cidade sem poções."],smith:["Escudos de qualidade!","Escudo novo? Fale comigo."],trader:["Compro itens de monstros!","Traga seu loot, pago bem!"],depot:["Seus itens guardados em segurança.","Depot aberto!"],tasks:["Caçadores! Tenho tarefas para vocês.","Os portais do subsolo esperam os corajosos."]};
+const NPC_AMBIENT={potions:["Poções fresquinhas! Vida e mana!","Não saia da cidade sem poções."],smith:["Escudos de qualidade!","Escudo novo? Fale comigo."],trader:["Compro itens de monstros!","Traga seu loot, pago bem!"],depot:["Seus itens guardados em segurança.","Depot aberto!"],tasks:["Caçadores! Tenho tarefas para vocês.","Os portais do subsolo esperam os corajosos."],priest:["Que os deuses guiem sua caçada.","Precisa de uma bênção? Fale comigo."]};
 function npcTier(id){const a=p?.npc?.[id]?.aff||0;return a>=10?3:a>=6?2:a>=3?1:0}
-function npcLines(id){const D=NPCDATA[id];if(D)return D.lines[npcTier(id)];if(id.startsWith("boat:"))return ["Navios partindo! Fale comigo para viajar.","O mar está calmo hoje. Bom dia para zarpar!"];return NPC_AMBIENT[id.startsWith("aurora:")?id.slice(7):id]||["Olá, viajante!"]}
+function npcLines(id){const D=NPCDATA[id];if(D)return D.lines[npcTier(id)];if(id.startsWith("boat:"))return ["Navios partindo! Fale comigo para viajar.","O mar está calmo hoje. Bom dia para zarpar!"];return NPC_AMBIENT[id.includes(":")?id.split(":")[1]:id]||["Olá, viajante!"]}
 function npcShort(id){const D=NPCDATA[id];if(D)return D.name.split(" ")[0];const n=npcsTop.find(n=>n.id===id);return n?n.name.replace(/^\S+\s+/,""):"NPC"}
 function npcSpeak(n,txt){if(n){n.bubble=txt;n.bt=Date.now()}}
 function talkTo(n){if(!n||!p)return;pendingTalk=null;autoPath=[];autoDest=null;
@@ -2325,7 +2350,7 @@ function tkxType(el,full){clearInterval(tkxTimer);el.classList.remove("typing");
  if(full===tkxLast||matchMedia("(prefers-reduced-motion: reduce)").matches){el.textContent=full;tkxLast=full;return}
  tkxLast=full;let i=0;el.textContent="";el.classList.add("typing");tkxTimer=setInterval(()=>{i+=2;el.textContent=full.slice(0,i);if(i>=full.length){clearInterval(tkxTimer);el.classList.remove("typing")}},22)}
 function openNpc(id,tab="talk",sel=0,msg=""){
- if(id.startsWith("boat:"))return openBoat(id.slice(5));if(id.startsWith("aurora:"))return openShop(id.slice(7),npcShort(id));if(id==="tasks")return openTasks();
+ if(id.startsWith("boat:"))return openBoat(id.slice(5));if(id.includes(":")){const k=id.split(":")[1];if(k==="priest")return openPriest(id);return openShop(k,npcShort(id))}if(id==="tasks")return openTasks();
  const D=NPCDATA[id];if(!D)return openShop(id);const st=npcSt(id),aff=st.aff,tier=aff>=10?3:aff>=6?2:aff>=3?1:0;
  const hearts="❤️".repeat(Math.min(5,Math.ceil(aff/2)))+"🖤".repeat(5-Math.min(5,Math.ceil(aff/2)));
  const ls=D.lines[tier];const line=msg||rnd1(ls);
@@ -2559,22 +2584,22 @@ mmBox.addEventListener("pointerdown",e=>e.stopPropagation());
 mmIn.onclick=e=>{e.stopPropagation();setMinimapZoom(mmZoom+1)};mmOut.onclick=e=>{e.stopPropagation();setMinimapZoom(mmZoom-1)};
 let mmWheelAt=0;mm.addEventListener("wheel",e=>{e.preventDefault();e.stopPropagation();const n=performance.now();if(n-mmWheelAt<180)return;mmWheelAt=n;setMinimapZoom(mmZoom+(e.deltaY<0?1:-1))},{passive:false});
 setMinimapZoom(mmZoom);
-const mmColors={9:"#9a4a36",10:"#a07a4c",0:"#4a8a34",1:"#1b4f8a",2:"#1f5a1c",3:"#7d6d57",4:"#3b332b",5:"#e9c56a",6:"#15110d",7:"#5a4a38",8:"#e9c56a"};
+const mmColors={11:"#6b6b70",12:"#e9c56a",9:"#9a4a36",10:"#a07a4c",0:"#4a8a34",1:"#1b4f8a",2:"#1f5a1c",3:"#7d6d57",4:"#3b332b",5:"#e9c56a",6:"#15110d",7:"#5a4a38",8:"#e9c56a"};
 /* Atlas do GM: consulta livre; teleporte exige armar, escolher e confirmar. */
 const gmMapBtn=document.createElement("button");gmMapBtn.type="button";gmMapBtn.className="hidden";gmMapBtn.textContent="⌖";gmMapBtn.title="Atlas e teleporte do GameMaster";gmMapBtn.setAttribute("aria-label","Atlas e teleporte do GameMaster");mmBox.appendChild(gmMapBtn);
 gmMapBtn.onclick=e=>{e.stopPropagation();openGmAtlas()};
-(function(){const st=document.createElement("style");st.textContent=`.gm-atlas-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}.gm-atlas-tools select,.gm-atlas-tools button{max-width:100%}.gm-atlas-tools button[aria-pressed=true]{border-color:var(--gold);color:var(--gold)}#gmAtlas{width:100%;height:auto;aspect-ratio:40/27;border:2px solid var(--border);touch-action:none;cursor:crosshair}.gm-atlas-list{display:grid;gap:6px;margin-top:10px}.gm-atlas-list button{text-align:left;white-space:normal;overflow-wrap:anywhere}.gm-atlas-status{color:var(--gold);min-height:32px;margin:8px 0}`;document.head.appendChild(st)})();
-function gmLandmarks(){return LawlGmNavigation.landmarks(GM?.status,p,BOSSES,ZONES)}
+(function(){const st=document.createElement("style");st.textContent=`.gm-atlas-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}.gm-atlas-tools select,.gm-atlas-tools button{max-width:100%}.gm-atlas-tools button[aria-pressed=true]{border-color:var(--gold);color:var(--gold)}#gmAtlas{width:100%;height:auto;aspect-ratio:30/23;border:2px solid var(--border);touch-action:none;cursor:crosshair}.gm-atlas-list{display:grid;gap:6px;margin-top:10px}.gm-atlas-list button{text-align:left;white-space:normal;overflow-wrap:anywhere}.gm-atlas-status{color:var(--gold);min-height:32px;margin:8px 0}`;document.head.appendChild(st)})();
+function gmLandmarks(){const l=LawlGmNavigation.landmarks(GM?.status,p,BOSSES,BOSSES.map(B=>ZONES[B.zi]));return l.length?[...l,...LawlWorld.cities.map(c=>({id:"temple-"+c.id,name:"Templo de "+c.name,x:c.cx,y:c.cy,z:0,kind:"temple"}))]:l}
 function openGmAtlas(){
  if(!isGM())return;
  let floor=p.z===1?1:0,armed=false,chosen=null,busy=false;
  const points=gmLandmarks();
- openModal("⌖ Atlas do GameMaster",`<div class="gm-atlas-tools"><select id="gmAtlasFloor" aria-label="Andar do atlas"><option value="0">Superfície</option><option value="1">Subsolo</option></select><button id="gmAtlasArm" aria-pressed="false">↗ Selecionar teleporte</button></div><canvas id="gmAtlas" width="800" height="540" aria-label="Minimapa completo do GameMaster"></canvas><p id="gmAtlasStatus" class="gm-atlas-status" role="status"></p><div class="gm-atlas-tools"><button id="gmAtlasGo" disabled>↗ Teleportar</button><button id="gmAtlasCancel">✕ Cancelar seleção</button></div><div class="gm-atlas-list">${points.map(q=>`<button data-gm-landmark="${q.id}">${q.kind==="temple"?"✚":"◆"} ${escapeHtml(q.name)} · X ${q.x}, Y ${q.y} · ${q.z?"Subsolo":"Superfície"}</button>`).join("")}</div>`,"gm-atlas");
+ openModal("⌖ Atlas do GameMaster",`<div class="gm-atlas-tools"><select id="gmAtlasFloor" aria-label="Andar do atlas"><option value="0">Superfície</option><option value="1">Subsolo</option></select><button id="gmAtlasArm" aria-pressed="false">↗ Selecionar teleporte</button></div><canvas id="gmAtlas" width="900" height="690" aria-label="Minimapa completo do GameMaster"></canvas><p id="gmAtlasStatus" class="gm-atlas-status" role="status"></p><div class="gm-atlas-tools"><button id="gmAtlasGo" disabled>↗ Teleportar</button><button id="gmAtlasCancel">✕ Cancelar seleção</button></div><div class="gm-atlas-list">${points.map(q=>`<button data-gm-landmark="${q.id}">${q.kind==="temple"?"✚":"◆"} ${escapeHtml(q.name)} · X ${q.x}, Y ${q.y} · ${q.z?"Subsolo":"Superfície"}</button>`).join("")}</div>`,"gm-atlas");
  const canvas=$("#gmAtlas"),ctx=canvas.getContext("2d"),status=$("#gmAtlasStatus"),arm=$("#gmAtlasArm"),go=$("#gmAtlasGo"),floorSelect=$("#gmAtlasFloor");floorSelect.value=String(floor);
  function draw(){
   if(!isGM()){closeModal();return}
   const s=canvas.width/W;ctx.fillStyle=mmColors[6];ctx.fillRect(0,0,canvas.width,canvas.height);
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){ctx.fillStyle=mmColors[maps[floor]?.[y]?.[x]]||mmColors[6];ctx.fillRect(x*s,y*s,s,s)}
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){{const t=maps[floor]?.[y]?.[x];ctx.fillStyle=(floor===0&&LawlWorld.mm(t,x,y))||mmColors[t]||mmColors[6]}ctx.fillRect(x*s,y*s,s,s)}
   for(const q of points.filter(q=>q.z===floor)){ctx.fillStyle=q.kind==="temple"?mmColors[5]:mmColors[8];ctx.fillRect(q.x*s-3,q.y*s-3,11,11);ctx.fillStyle=mmColors[6];ctx.fillRect(q.x*s,q.y*s,5,5)}
   if(p.z===floor){ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue("--text");ctx.fillRect(p.x*s-2,p.y*s-2,9,9)}
   if(chosen){ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue("--gold");ctx.lineWidth=2;ctx.strokeRect(chosen.x*s-5,chosen.y*s-5,15,15)}
@@ -2608,10 +2633,10 @@ function requestWalk(tx,ty){
 mm.addEventListener("pointerdown",e=>{e.stopPropagation();if(!p||modalKind)return;const r=mm.getBoundingClientRect(),s=r.width/(MMR*2+1);
  requestWalk(p.x+Math.floor((e.clientX-r.left)/s)-MMR,p.y+Math.floor((e.clientY-r.top)/s)-MMR)});
 function drawMinimap(){if(!p)return;gmMapBtn.classList.toggle("hidden",!isGM());const c=mm.getContext("2d"),s=mm.width/(MMR*2+1);c.fillStyle="#000";c.fillRect(0,0,mm.width,mm.height);
- for(let dy=-MMR;dy<=MMR;dy++)for(let dx=-MMR;dx<=MMR;dx++){const t=map[p.y+dy]?.[p.x+dx];if(t===undefined)continue;c.fillStyle=mmColors[t]||"#444";c.fillRect((dx+MMR)*s,(dy+MMR)*s,s+.5,s+.5)}
+ for(let dy=-MMR;dy<=MMR;dy++)for(let dx=-MMR;dx<=MMR;dx++){const t=map[p.y+dy]?.[p.x+dx];if(t===undefined)continue;c.fillStyle=(p.z===0&&LawlWorld.mm(t,p.x+dx,p.y+dy))||mmColors[t]||"#444";c.fillRect((dx+MMR)*s,(dy+MMR)*s,s+.5,s+.5)}
  const P=(x,y,col,z=1)=>{c.fillStyle=col;c.fillRect((x-p.x+MMR)*s-(z-1)*s/2,(y-p.y+MMR)*s-(z-1)*s/2,s*z,s*z)};
  autoPath.forEach(([x,y])=>P(x,y,"#e9c56a88"));if(autoDest)P(autoDest[0],autoDest[1],"#e9c56a",1.6);
- mobs.forEach(m=>{if(!m.dummy&&!LawlMonsters.hidden(m))P(m.x,m.y,"#e34f4f")});npcs.forEach(n=>P(n.x,n.y,"#62aef0"));for(const q of gmLandmarks().filter(q=>q.z===p.z))P(q.x,q.y,mmColors[5],2.2);P(p.x,p.y,"#fff",1.8)}
+ mobs.forEach(m=>{if(!m.dummy&&Math.abs(m.x-p.x)<=MMR&&Math.abs(m.y-p.y)<=MMR&&!LawlMonsters.hidden(m))P(m.x,m.y,"#e34f4f")});npcs.forEach(n=>P(n.x,n.y,"#62aef0"));for(const q of gmLandmarks().filter(q=>q.z===p.z))P(q.x,q.y,mmColors[5],2.2);P(p.x,p.y,"#fff",1.8)}
 function stepAuto(){if(!p||!autoPath.length)return;if(modalKind||move[0]||move[1]){autoPath=[];autoDest=null;pendingTalk=null;return}
  const now=performance.now();if(now-autoAt<playerStepMs(now))return;autoAt=now;
  const [x,y]=autoPath[0];if(!walkable(x,y)){autoPath=[];autoDest=null;return}if(Math.abs(x-p.x)+Math.abs(y-p.y)!==1){const np=findPath(p.x,p.y,...autoDest);autoPath=np||[];return}
@@ -2874,7 +2899,7 @@ function simulate(dt){const ps=players();
  const wk=(z,x,y)=>{const t=maps[z][y]?.[x];return t===0||t===3||t===5||t===7||t===8||t===10};
  for(const z of [0,1]){const pz=ps.filter(q=>q.z===z);if(!pz.length)continue;const list=mobsZ[z];
   const occ=(x,y)=>list.some(m=>m.x===x&&m.y===y)||(!z&&npcsTop.some(n=>n.x===x&&n.y===y))||pz.some(q=>q.x===x&&q.y===y);
-  for(const m of list){if(m.dummy)continue;
+  for(const m of list){if(m.dummy||!pz.some(q=>Math.abs(q.x-m.x)<=24&&Math.abs(q.y-m.y)<=24))continue;
    const tg=LawlMonsterAI.target(m,pz,q=>!safe(q.x,q.y)),td=tg?dist(m,tg):Infinity;
    if(!LawlMonsterAI.tick(m,dt,!!tg))continue;
    if(m.t.official&&z!==p.z){for(const a of LawlMonsters.tick(m,dt,!!tg,true))LawlMonsters.support(m,a)}
