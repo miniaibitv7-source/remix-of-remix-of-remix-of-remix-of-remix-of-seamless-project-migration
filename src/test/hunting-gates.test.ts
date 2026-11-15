@@ -16,7 +16,7 @@ describe("hunting area entrances", () => {
   it("Lawl hunts start well south of the city houses", () => {
     const lawl = s.ZONES.filter((z: any) => z.city === "Lawl");
     expect(lawl).toHaveLength(12);
-    const lowestHouse = Math.max(...s.HOUSES.slice(0, 22).map(([, y, , h]: number[]) => y + h - 1));
+    const lowestHouse = Math.max(...s.HOUSES.slice(0, 22).map((r: number[]) => r[1]! + r[3]! - 1));
     for (const z of lawl) expect(z.y1 - lowestHouse).toBeGreaterThanOrEqual(10);
   });
   it("every hunting area stairs is reachable on foot from the Lawl temple", () => {

@@ -11,13 +11,13 @@ describe("hunting caves and surface hunts", () => {
     expect(zones[0].top).toBe("Rat");
   });
   for (const [i, z] of zones.entries()) {
-    const floors: [string, number[][], number, any[]][] = [["subsolo", under, 7, z.lures], ["superfície", top, 0, z.luresTop]];
+    const floors: [string, any[][], number, any[]][] = [["subsolo", under, 7, z.lures], ["superfície", top, 0, z.luresTop]];
     for (const [label, grid, floor, lures] of floors) {
       const f = (x: number, y: number) => grid[y]?.[x] === floor || (grid[y]?.[x] === (label === "subsolo" ? 8 : 5));
       it(`${z.name} (${label}): every open tile is reachable from the stairs`, () => {
         const seen = new Set([`${z.cx},${z.cy}`]), q: [number, number][] = [[z.cx, z.cy]];
-        for (let k = 0; k < q.length; k++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const x = q[k][0] + dx, y = q[k][1] + dy;
+        for (let k = 0; k < q.length; k++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) {
+          const x = q[k]![0] + dx, y = q[k]![1] + dy;
           if (x > z.x1 && x < z.x2 && y > z.y1 && y < z.y2 && f(x, y) && !seen.has(`${x},${y}`)) { seen.add(`${x},${y}`); q.push([x, y]); }
         }
         let open = 0;

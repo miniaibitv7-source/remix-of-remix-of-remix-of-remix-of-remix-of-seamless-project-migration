@@ -22,12 +22,12 @@ export function buildWorld() {
 /* Tiles a player can step on; tile 12 is the Premium bridge gate. */
 export const FREE_WALK = [0, 3, 5, 7, 8, 10];
 export const PREMIUM_WALK = [...FREE_WALK, 12];
-export function flood(grid: number[][], sx: number, sy: number, walk: number[]) {
-  const H = grid.length, W = grid[0].length, seen = new Uint8Array(W * H), q: [number, number][] = [[sx, sy]];
+export function flood(grid: any[][], sx: number, sy: number, walk: number[]) {
+  const H = grid.length, W = grid[0]!.length, seen = new Uint8Array(W * H), q: [number, number][] = [[sx, sy]];
   seen[sy * W + sx] = 1;
   while (q.length) {
     const [x, y] = q.pop()!;
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
       const k = ny * W + nx;
