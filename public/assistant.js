@@ -19,5 +19,12 @@ function pile(){return {gold:0,hpPot:0,mpPot:0,loot:{},gear:[]}}
 function empty(x){return !x||(!(x.gold>0)&&!(x.hpPot>0)&&!(x.mpPot>0)&&!Object.keys(x.loot||{}).length&&!(x.gear||[]).length)}
 function canPick(drop,now){if(!drop||now>=drop.until)return {ok:false,reason:"gone"};if(!drop.mine&&now<drop.freeAt)return {ok:false,reason:"owner",ms:drop.freeAt-now};return {ok:true}}
 function left(p,now){return Math.max(0,num(p&&p.assistUntil)-now)}
-root.LawlAssist={DAY,DAYS,PRICE,BUNDLE,OWNER_MS,LIFE_MS,premium,active,settle,buy,buyBundle,autoLoot,pile,empty,canPick,left};
+/* Magias de cura automáticas: 3 espaços, cada um com magia, limite de vida (%) e liga/desliga. */
+const SPELL_SLOTS=3,HEAL_KINDS=["heal","hot","massheal"];
+function healSpell(sp){return !!sp&&sp.g==="heal"&&HEAL_KINDS.includes(sp.k)}
+function normSpells(list){const src=Array.isArray(list)?list:[];return Array.from({length:SPELL_SLOTS},(_,i)=>{const s=src[i]||{};
+ return {w:typeof s.w==="string"?s.w.slice(0,40):"",pct:Math.min(99,Math.max(1,Math.round(num(s.pct))||70)),on:!!s.on&&typeof s.w==="string"&&!!s.w}})}
+/* Primeiro espaço ligado (ordem 1→3) cuja vida está abaixo do limite e que pode ser lançado agora. */
+function pickSpell(slots,hpPct,canCast){for(const s of slots||[]){if(s&&s.on&&s.w&&hpPct<s.pct&&canCast(s.w))return s.w}return ""}
+root.LawlAssist={DAY,DAYS,PRICE,BUNDLE,OWNER_MS,LIFE_MS,SPELL_SLOTS,premium,active,settle,buy,buyBundle,autoLoot,pile,empty,canPick,left,healSpell,normSpells,pickSpell};
 })(typeof window!=="undefined"?window:globalThis);

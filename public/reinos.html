@@ -1023,7 +1023,7 @@ function checkStairs(){checkPortals();const t=map[p.y]?.[p.x],k=p.x+","+p.y+","+
  else if(t!==5&&t!==8)p.stairLock=false;
  const zi=zoneAt(p.x,p.y),key=zi+":"+p.z;if(key!==lastZoneKey){lastZoneKey=key;if(zi>=0)say(`📍 ${ZONES[zi].name}${p.z?" (Subsolo)":""} — ${p.z?ZONES[zi].sub:ZONES[zi].top}`)}}
 function createPlayer(name,voc){
- p={name,voc,level:1,xp:0,hp:150,mp:50,gold:20,hpPot:3,mpPot:3,x:30,y:30,bag:[],equip:LawlItems.starterKit(voc,equipment),kitBag:1,loot:{},trainTime:0,skills:{sword:10,distance:10,magic:0,shielding:10},tries:{},quests:{},auto:{hp:false,mp:false,hpPct:30,mpPct:30,loot:true},gems:10,premiumUntil:0,assistUntil:0,lastDaily:0,depot:{items:[],loot:{}},cons:{}};
+ p={name,voc,level:1,xp:0,hp:150,mp:50,gold:20,hpPot:3,mpPot:3,x:30,y:30,bag:[],equip:LawlItems.starterKit(voc,equipment),kitBag:1,loot:{},trainTime:0,skills:{sword:10,distance:10,magic:0,shielding:10},tries:{},quests:{},auto:{hp:false,mp:false,hpPct:30,mpPct:30,loot:true,spells:LawlAssist.normSpells()},gems:10,premiumUntil:0,assistUntil:0,lastDaily:0,depot:{items:[],loot:{}},cons:{}};
  p.outfit=LawlOutfits.normalize(null,voc);p.stance="balanced";p.hp=maxHp();p.mp=maxMp();save();
 }
 const DAY=864e5,PREMIUM_PLANS=[{days:7,gems:70},{days:30,gems:250},{days:90,gems:650}];
@@ -1070,7 +1070,7 @@ function load(){
   if(s&&s.name&&vocations[s.voc]){p=s;delete p.attackAt;delete p.lastMove;p.bag??=[];p.depot??={items:[],loot:{}};p.equip??={};p.loot??={};p.cons=LawlItems.normalizeCons(p.cons);p.trainTime??=0;
    p.outfit=LawlOutfits.normalize(p.outfit,p.voc);LawlMounts.sanitize(p);p.stance=LawlStances.normalize(p.stance);p.bag=p.bag.filter(e=>e&&e.slot);window.__retiredGone=LawlItems.purgeRetired(p);LawlItems.lootToGear(p);LawlItems.fixTwoHanded(p);window.__starterBag=LawlItems.grantStarterBag(p);
    p.skills??={sword:10,distance:10,magic:0,shielding:10};if(!p.tries){p.tries={};for(const k in p.skills)p.skills[k]=Math.floor(p.skills[k])}p.quests??={};p.gems??=0;p.premiumUntil??=0;p.lastDaily??=0;
-   p.auto={hp:!!(p.auto&&p.auto.hp),mp:!!(p.auto&&p.auto.mp),hpPct:clamp(+(p.auto&&p.auto.hpPct)||30,1,99),mpPct:clamp(+(p.auto&&p.auto.mpPct)||30,1,99),loot:!(p.auto&&p.auto.loot===false)};p.assistUntil=Math.max(0,+p.assistUntil||0);LawlAssist.settle(p,Date.now());
+   p.auto={hp:!!(p.auto&&p.auto.hp),mp:!!(p.auto&&p.auto.mp),hpPct:clamp(+(p.auto&&p.auto.hpPct)||30,1,99),mpPct:clamp(+(p.auto&&p.auto.mpPct)||30,1,99),loot:!(p.auto&&p.auto.loot===false),spells:LawlAssist.normSpells(p.auto&&p.auto.spells)};p.assistUntil=Math.max(0,+p.assistUntil||0);LawlAssist.settle(p,Date.now());
    p.hp=clamp(p.hp,1,maxHp());p.mp=clamp(p.mp,0,maxMp());window.__offTrain=offlineTrain();return true}
  }catch(e){localStorage.removeItem(SAVE)}
  return false;
@@ -1564,7 +1564,14 @@ function useItem(id){const it=LawlItems.byId(id);if(!it||!p)return;
  else if(it.temple){if(performance.now()-lastCombatAt<10000){say("Você está em combate. Espere alguns segundos para usar o pergaminho.");return}
   setFloor(0);p.x=30;p.y=30;target=null;say("📜 Você foi levado ao templo de Lawl.")}
  p.cons[id]--;if(p.cons[id]<=0)delete p.cons[id];save();renderUI()}
-function autoHeal(dt){const a=p.auto;if(!a||!LawlAssist.active(p,Date.now()))return;a.cd=Math.max(0,(a.cd||0)-dt);if(a.cd>0)return;if(sNow()<potCd)return;
+/* Magias que o Assistente pode lançar sozinho: curas de vida que a vocação e o nível do personagem já permitem. */
+function autoHealSpells(){return SPELLS.filter(sp=>LawlAssist.healSpell(sp)&&(isGM()||(sp.v.includes(p.voc)&&p.level>=sp.lv)))}
+function autoSpellReady(w){const sp=autoHealSpells().find(x=>x.w===w);if(!sp)return false;const now=sNow();
+ if(LawlSpells.cooldownsFor(sp).some(c=>(groupCd[c.key]||0)>now)||(spellCd[sp.w]||0)>now)return false;
+ const cost=SPELL_COST[sp.k]?SPELL_COST[sp.k](sp,""):sp.mp;return typeof cost==="number"&&p.mp>=cost}
+function autoHeal(dt){const a=p.auto;if(!a||!LawlAssist.active(p,Date.now()))return;
+ a.scd=Math.max(0,(a.scd||0)-dt);if(a.scd<=0&&p.hp>0){const w=LawlAssist.pickSpell(a.spells,100*p.hp/maxHp(),autoSpellReady);if(w){castById(w);a.scd=.5}}
+ a.cd=Math.max(0,(a.cd||0)-dt);if(a.cd>0)return;if(sNow()<potCd)return;
  if(a.hp&&p.hpPot>0&&p.hp<maxHp()*a.hpPct/100){potion("hp");a.cd=.9;save()}
  else if(a.mp&&p.mpPot>0&&p.mp<maxMp()*a.mpPct/100){potion("mp");a.cd=.9;save()}}
 const SMOOTH=new WeakMap();let smLast=performance.now();const cam={x:0,y:0,init:false,z:null};window.__lawlCam=cam;
@@ -2137,7 +2144,8 @@ function menuClick(e){
  if(e.target.closest("[data-open-store]")){openStore("special");return true}
  const t=e.target.closest("[data-auto-toggle]");
  if(t){const k=t.dataset.autoToggle;if(!LawlAssist.active(p,Date.now())){say("🎯 Precisa de Premium + Assistente de Caça (Loja).");return true}
-  if(k==="all"){const on=!(p.auto.hp||p.auto.mp);p.auto.hp=on;p.auto.mp=on}else if(k==="loot")p.auto.loot=p.auto.loot===false;else p.auto[k]=!p.auto[k];
+  const sl=/^spell(\d)$/.exec(k);if(sl){const s=p.auto.spells[+sl[1]];if(!s.w){say("✨ Escolha primeiro a magia de cura deste espaço.");return true}s.on=!s.on}
+  else if(k==="all"){const on=!(p.auto.hp||p.auto.mp||p.auto.spells.some(s=>s.on));p.auto.hp=on;p.auto.mp=on;p.auto.spells.forEach(s=>{s.on=on&&!!s.w})}else if(k==="loot")p.auto.loot=p.auto.loot===false;else p.auto[k]=!p.auto[k];
   save();showTab("auto");return true}
  if(e.target.closest("#deleteHero")){const typed=prompt("Para apagar, digite o nome do personagem (" + p.name + "):");if(typed&&typed.trim().toLowerCase()===p.name.trim().toLowerCase()){const del=window.parent!==window&&window.parent.lawlDeleteCharacter;if(del){del().catch(err=>alert(err.message))}else{localStorage.removeItem(SAVE);location.reload()}}else if(typed!==null){alert("Nome incorreto. Ação cancelada.")}return true}
  return false}
@@ -2152,15 +2160,20 @@ function showTab(tab){
  else if(tab==="skills"){el.innerHTML=`<div class="sk-total"><div class="sk-top"><span class="sk-name">Progresso geral</span><span class="sk-lvl" id="skTotalLvl"></span></div><div class="sk-bar" id="skTotal"><i></i></div><div class="sk-sub"><span>Soma das quatro skills</span><span id="skTotalTxt"></span></div></div>${SKILLS.map(skillRowHtml).join("")}<div class="sk-sub" style="border-top:1px solid #61523f;padding-top:8px"><span id="skTrain"></span><span>Skills · ${training(p.x,p.y)?trainMult():1}×</span></div>`;refreshSkills()}
  else if(tab==="spells"){el.innerHTML=spellsTabHtml()}
  else if(tab==="auto"){const a=p.auto,on=LawlAssist.active(p,Date.now()),ms=LawlAssist.left(p,Date.now()),dis=on?"":"disabled",st=on?`Ativo · ${Math.floor(ms/DAY)}d ${Math.floor(ms%DAY/36e5)}h restantes`:!isPremium()?"Desativado · precisa de Premium + Assistente de Caça":`Desativado · compre o Assistente na Loja (${LawlAssist.PRICE} 💎 · ${LawlAssist.DAYS} dias)`;
-  el.innerHTML=`<p class="small">O Assistente de Caça junta a Auto-Cura (bebe poções sozinho) e o Auto-Loot (o loot vai direto para a mochila). Funciona só com Premium ativo e o Assistente comprado na Loja; se o Premium acabar, o Assistente é zerado. Sem ele, o loot cai no chão e você pega chegando perto e tocando no botão "Pegar loot".</p>
+  el.innerHTML=`<p class="small">O Assistente de Caça junta a Auto-Cura (bebe poções e lança até 3 magias de cura sozinho) e o Auto-Loot (o loot vai direto para a mochila). Funciona só com Premium ativo e o Assistente comprado na Loja; se o Premium acabar, o Assistente é zerado. Sem ele, o loot cai no chão e você pega chegando perto e tocando no botão "Pegar loot".</p>
   <div class="auto-box"><div class="row"><span><b>🎯 Assistente de Caça</b><br><span class="small">${st}</span></span>${on?"":`<button class="sw off" data-open-store>Loja</button>`}</div></div>
   <div class="auto-box"><div class="row"><span><b>👜 Auto-Loot</b><br><span class="small">Recolhe ouro, itens e poções dos monstros</span></span><button class="sw ${on&&a.loot!==false?"on":"off"}" data-auto-toggle="loot" ${dis}>${on&&a.loot!==false?"Ativado":"Desativado"}</button></div></div>
-  <div class="auto-box"><div class="row"><span><b>Auto-Cura</b><br><span class="small">Liga ou desliga tudo de uma vez</span></span><button class="sw ${on&&(a.hp||a.mp)?"on":"off"}" data-auto-toggle="all" ${dis}>${on&&(a.hp||a.mp)?"Ativado":"Desativado"}</button></div></div>
+  <div class="auto-box"><div class="row"><span><b>Auto-Cura</b><br><span class="small">Liga ou desliga tudo de uma vez</span></span><button class="sw ${on&&(a.hp||a.mp||a.spells.some(s=>s.on))?"on":"off"}" data-auto-toggle="all" ${dis}>${on&&(a.hp||a.mp||a.spells.some(s=>s.on))?"Ativado":"Desativado"}</button></div></div>
   <div class="auto-box"><div class="row"><span>❤️ Poção de Vida <span class="small">· tem <b id="autoHpPot">${p.hpPot}</b></span></span><button class="sw ${on&&a.hp?"on":"off"}" data-auto-toggle="hp" ${dis}>${on&&a.hp?"Ativado":"Desativado"}</button></div><div class="row"><span class="small">Beber abaixo de <b id="lbl-hpPct">${a.hpPct}%</b></span><input type="range" min="1" max="99" value="${a.hpPct}" data-auto="hpPct"></div><div class="row"><span class="small">Vida agora</span><span class="small" id="autoHpNow"></span></div></div>
   <div class="auto-box"><div class="row"><span>💧 Poção de Mana <span class="small">· tem <b id="autoMpPot">${p.mpPot}</b></span></span><button class="sw ${on&&a.mp?"on":"off"}" data-auto-toggle="mp" ${dis}>${on&&a.mp?"Ativado":"Desativado"}</button></div><div class="row"><span class="small">Beber abaixo de <b id="lbl-mpPct">${a.mpPct}%</b></span><input type="range" min="1" max="99" value="${a.mpPct}" data-auto="mpPct"></div><div class="row"><span class="small">Mana agora</span><span class="small" id="autoMpNow"></span></div></div>
+  <div class="auto-box"><div class="row"><span><b>✨ Magias de Cura</b><br><span class="small">Até ${LawlAssist.SPELL_SLOTS} magias ligadas ao mesmo tempo · o espaço 1 tem prioridade · gasta sua mana</span></span></div>
+  ${a.spells.map((s,i)=>{const list=autoHealSpells(),ok=list.some(x=>x.w===s.w);return `<div class="row"><span class="small">Magia ${i+1}</span><select data-auto-spell="${i}" ${dis}><option value="">— nenhuma —</option>${list.map(x=>`<option value="${escapeHtml(x.w)}" ${x.w===s.w?"selected":""}>${x.ic||"💚"} ${escapeHtml(x.n)} (${escapeHtml(x.w)}) · ${x.mp} mana</option>`).join("")}</select><button class="sw ${on&&s.on&&ok?"on":"off"}" data-auto-toggle="spell${i}" ${dis}>${on&&s.on&&ok?"Ativado":"Desativado"}</button></div><div class="row"><span class="small">Lançar abaixo de <b id="lbl-spell${i}">${s.pct}%</b> de vida</span><input type="range" min="1" max="99" value="${s.pct}" data-auto-slot="${i}" ${dis}></div>`}).join("")}
+  ${autoHealSpells().length?"":`<p class="small">Sua vocação ainda não tem magia de cura neste nível.</p>`}</div>
   <p class="small">Compre mais poções com o Alquimista.</p>`;
   refreshAuto();
-  el.querySelectorAll("input[type=range]").forEach(r=>{r.oninput=()=>{p.auto[r.dataset.auto]=+r.value;$("#lbl-"+r.dataset.auto).textContent=r.value+"%";save()}})
+  el.querySelectorAll("input[data-auto]").forEach(r=>{r.oninput=()=>{p.auto[r.dataset.auto]=+r.value;$("#lbl-"+r.dataset.auto).textContent=r.value+"%";save()}});
+  el.querySelectorAll("input[data-auto-slot]").forEach(r=>{r.oninput=()=>{const i=+r.dataset.autoSlot;p.auto.spells[i].pct=+r.value;$("#lbl-spell"+i).textContent=r.value+"%";save()}});
+  el.querySelectorAll("select[data-auto-spell]").forEach(sel=>{sel.onchange=()=>{const s=p.auto.spells[+sel.dataset.autoSpell];s.w=sel.value;s.on=!!sel.value;save();showTab("auto")}})
  }
  else el.innerHTML=`<div class="stats">Mover: setas / WASD ou direcional<br>Alvo: TAB ou Espaço · Magia rápida: Q<br>Falar/Magias: Enter e digite as palavras (ex: exura, exori flam, utani hur). Veja a aba Magias.<br>Poções: 1 (botão de baixo) e 2 (botão de cima) · segure o botão para trocar a poção<br>Falar com NPC: E (fique ao lado)<br>Inventário: I · Missões: M · Montaria: R (montar/desmontar)<br><br>Na mochila: clique num equipamento para equipar e clique num espaço de equipamento para desequipar.<br><br>Monstros ficam mais fortes longe da cidade. A cidade é zona segura. Treine nos bonecos (leste da cidade) com horas compradas do Treinador.</div>`;
 }
