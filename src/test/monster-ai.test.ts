@@ -7,6 +7,8 @@ const scope = {} as { LawlMonsterAI: {
   profile: (m: Mob) => { speed: number; step: number; sight: number };
   target: (m: Mob, players: Array<{ x: number; y: number; z: number; hp?: number }>, allowed: (q: unknown) => boolean) => unknown;
   tick: (m: Mob, dt: number, engaged: boolean) => boolean;
+  surrounded: (tx: number, ty: number, pass: (x: number, y: number) => boolean, occ: (x: number, y: number) => boolean) => boolean;
+  wander: (m: { x: number; y: number }, pass: (x: number, y: number) => boolean, occ: (x: number, y: number) => boolean, rnd?: () => number) => number[] | null;
 } };
 runInNewContext(readFileSync("public/monster-ai.js", "utf8"), scope);
 const ai=scope.LawlMonsterAI;
@@ -87,10 +89,36 @@ describe("surrounding the character", () => {
     const mobs=pack();for(let i=0;i<30;i++)round(mobs);
     expect(mobs.filter(m=>ring(m)===1)).toHaveLength(8);
   });
-  it("leaves extra monsters waiting nearby without wandering", () => {
+  it("treats the character as surrounded only when all 8 tiles are taken", () => {
     const mobs=pack();for(let i=0;i<30;i++)round(mobs);
-    expect(mobs.filter(m=>ring(m)===2)).toHaveLength(2);
-    expect(round(mobs)).toBe(0);
+    const occ=(x:number,y:number)=>(x===P.x&&y===P.y)||mobs.some(o=>o.x===x&&o.y===y);
+    expect(ai.surrounded(P.x,P.y,pass,occ)).toBe(true);
+    mobs.splice(mobs.findIndex(m=>ring(m)===1),1);
+    expect(ai.surrounded(P.x,P.y,pass,occ)).toBe(false);
+  });
+  it("makes extra monsters wander randomly to a free tile while the 8 tiles are full", () => {
+    const mobs=pack();for(let i=0;i<30;i++)round(mobs);
+    const extra=mobs.find(m=>ring(m)===2)!;
+    const occ=(x:number,y:number)=>(x===P.x&&y===P.y)||mobs.some(o=>o.x===x&&o.y===y);
+    const seq=[.9,0],rnd=()=>seq.shift() ?? 0;
+    const step=ai.wander(extra,pass,occ,rnd)!;
+    expect(step).not.toBeNull();
+    expect(pass(extra.x+step[0]!,extra.y+step[1]!)&&!occ(extra.x+step[0]!,extra.y+step[1]!)).toBe(true);
+    expect(ai.wander(extra,pass,occ,()=>.1)).toBeNull();
+  });
+  it("stops extra monsters in the game loop instead of chasing while surrounded", () => {
+    const game=readFileSync("public/reinos.html","utf8");
+    const ring8=at([[6,4],[7,4],[8,4],[6,5],[8,5],[6,6],[7,6],[8,6]]).map(o=>({...mob(),...o}));
+    const extra={...mob(),x:7,y:8,mv:0};let chased=0;
+    const g = { LawlMonsterAI: ai, players:()=>[{x:7,y:5,z:0,hp:100}], maps:[Array.from({length:20},()=>Array(20).fill(0)),[]], mobsZ:[[...ring8,extra],[]], npcsTop:[],
+      mobOk:(_z:number,x:number,y:number)=>x>=0&&y>=0&&x<20&&y<20,
+      safe:()=>false,zoneAt:()=>0,dist:(a:{x:number;y:number},b:{x:number;y:number})=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y)),
+      mobChaseStep:()=>{chased++;return [0,-1]},
+      simulate:(_dt:number)=>{} };
+    runInNewContext(game.slice(game.indexOf("function simulate(dt)"),game.indexOf("const MOBMSG=")),g);
+    for(let i=0;i<10;i++){extra.mv=0;g.simulate(.016)}
+    expect(chased).toBe(0);
+    expect(Math.max(Math.abs(extra.x-7),Math.abs(extra.y-5))).toBeGreaterThanOrEqual(2);
   });
   it("refills a freed side when an adjacent monster dies", () => {
     const mobs=pack();for(let i=0;i<30;i++)round(mobs);

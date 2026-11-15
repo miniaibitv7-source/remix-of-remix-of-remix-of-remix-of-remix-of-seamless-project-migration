@@ -1185,7 +1185,7 @@ function update(dt){
   }else if(ready){
    const mz=m.z??p.z,pass=(x,y)=>mobOk(mz,x,y)&&!safe(x,y)&&(m.zone===undefined||zoneAt(x,y)===m.zone);
    if(aggro){m.mv=LawlMonsterAI.profile(m).step;if(m.t.official&&m.t.flee&&m.hp<m.t.hp*.2){const dx=Math.sign(m.x-p.x),dy=Math.sign(m.y-p.y);if(pass(m.x+dx,m.y+dy)&&!occupied(m.x+dx,m.y+dy)){m.x+=dx;m.y+=dy}}
-    else if(d>(m.t.official&&!m.t.closeCombat?3:1)){const st=mobChaseStep(m,p.x,p.y,pass,occupied);if(st){m.x+=st[0];m.y+=st[1]}else m.mv=.2}}
+    else if(d>(m.t.official&&!m.t.closeCombat?3:1)){if(!(m.t.official&&!m.t.closeCombat)&&LawlMonsterAI.surrounded(p.x,p.y,pass,occupied)){const w=LawlMonsterAI.wander(m,pass,occupied);if(w){m.x+=w[0];m.y+=w[1]}}else{const st=mobChaseStep(m,p.x,p.y,pass,occupied);if(st){m.x+=st[0];m.y+=st[1]}else m.mv=.2}}}
    else{m.mv=1.5+Math.random()*2;const sx=Math.floor(Math.random()*3)-1,sy=Math.floor(Math.random()*3)-1;
     for(const [dx,dy] of [[sx,sy],[sx,0],[0,sy]]){if((dx||dy)&&pass(m.x+dx,m.y+dy)&&!occupied(m.x+dx,m.y+dy)){m.x+=dx;m.y+=dy;break}}}
   }
@@ -2905,7 +2905,7 @@ function simulate(dt){const ps=players();
    if(m.t.official&&z!==p.z){for(const a of LawlMonsters.tick(m,dt,!!tg,true))LawlMonsters.support(m,a)}
    if(tg&&td<=(m.t.official&&!m.t.closeCombat?3:1)){m.mv=.2;continue}
    const pass=(x,y)=>mobOk(z,x,y)&&!safe(x,y)&&(m.zone===undefined||zoneAt(x,y)===m.zone);
-   if(tg){m.mv=LawlMonsterAI.profile(m).step;if(m.t.official&&m.t.flee&&m.hp<m.t.hp*.2){const dx=Math.sign(m.x-tg.x),dy=Math.sign(m.y-tg.y);if(pass(m.x+dx,m.y+dy)&&!occ(m.x+dx,m.y+dy)){m.x+=dx;m.y+=dy}continue}const st=mobChaseStep(m,tg.x,tg.y,pass,occ);if(st){m.x+=st[0];m.y+=st[1]}else m.mv=.2;continue}
+   if(tg){m.mv=LawlMonsterAI.profile(m).step;if(m.t.official&&m.t.flee&&m.hp<m.t.hp*.2){const dx=Math.sign(m.x-tg.x),dy=Math.sign(m.y-tg.y);if(pass(m.x+dx,m.y+dy)&&!occ(m.x+dx,m.y+dy)){m.x+=dx;m.y+=dy}continue}if(!(m.t.official&&!m.t.closeCombat)&&LawlMonsterAI.surrounded(tg.x,tg.y,pass,occ)){const w=LawlMonsterAI.wander(m,pass,occ);if(w){m.x+=w[0];m.y+=w[1]}continue}const st=mobChaseStep(m,tg.x,tg.y,pass,occ);if(st){m.x+=st[0];m.y+=st[1]}else m.mv=.2;continue}
    m.mv=1.5+Math.random()*2;const sx=Math.floor(Math.random()*3)-1,sy=Math.floor(Math.random()*3)-1;
    for(const [dx,dy] of [[sx,sy],[sx,0],[0,sy]]){const nx=m.x+dx,ny=m.y+dy;if((dx||dy)&&pass(nx,ny)&&!occ(nx,ny)){m.x=nx;m.y=ny;break}}}}}
 const MOBMSG={

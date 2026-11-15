@@ -21,5 +21,14 @@
   m._hunting=engaged;
   return m.mv<=0;
  }
- root.LawlMonsterAI={profile,target,tick,SPEED_SCALE};
+ const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+ // True when none of the 8 SQM around the target is free to stand on (walls and other creatures block).
+ function surrounded(tx,ty,pass,occ){for(const [dx,dy] of DIRS){const x=tx+dx,y=ty+dy;if(pass(x,y)&&!occ(x,y))return false}return true}
+ // A melee monster that cannot reach the target wanders one random SQM (or waits) and re-checks next step.
+ function wander(m,pass,occ,rnd=Math.random){
+  if(rnd()<.5)return null;
+  const opts=DIRS.filter(([dx,dy])=>pass(m.x+dx,m.y+dy)&&!occ(m.x+dx,m.y+dy)&&(!dx||!dy||(pass(m.x+dx,m.y)&&pass(m.x,m.y+dy))));
+  return opts.length?opts[Math.floor(rnd()*opts.length)]:null;
+ }
+ root.LawlMonsterAI={profile,target,tick,surrounded,wander,SPEED_SCALE};
 })(globalThis);
