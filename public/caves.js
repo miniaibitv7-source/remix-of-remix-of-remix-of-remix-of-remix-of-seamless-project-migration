@@ -103,9 +103,10 @@ function carveHunt(grid,z,seed,o){
    if(!isF(x,y-1)&&!isF(x,y+1)){if(inb(x,y+1))set(x,y+1);else set(x,y-1);changed=true}}}
  // a few pillars in open side areas, never inside lure spots or the hub
  const inBig=(x,y)=>ch.some(c=>c.big&&((x-c.x)/(c.rx+1))**2+((y-c.y)/(c.ry+1))**2<=1);
+ const nearC=(x,y)=>ch.some(c=>Math.max(Math.abs(x-c.x),Math.abs(y-c.y))<=1);
  for(let y=y1+2;y<y2-1;y++)for(let x=x1+2;x<x2-1;x++){if(Math.max(Math.abs(x-cx),Math.abs(y-cy))<=3||inBig(x,y))continue;
   let open=true;for(let dy=-2;dy<=2&&open;dy++)for(let dx=-2;dx<=2;dx++)if(!isF(x+dx,y+dy)){open=false;break}
-  if(open&&R()<.07)grid[y][x]=K}
+  if(open&&R()<.07&&!nearC(x,y))grid[y][x]=K}
  // keep only what is reachable from the stairs
  const seen=new Set([cx+","+cy]),q=[[cx,cy]];
  for(let i=0;i<q.length;i++){const [x,y]=q[i];for(const [dx,dy] of D){const nx=x+dx,ny=y+dy,k=nx+","+ny;if(!seen.has(k)&&isF(nx,ny)){seen.add(k);q.push([nx,ny])}}}

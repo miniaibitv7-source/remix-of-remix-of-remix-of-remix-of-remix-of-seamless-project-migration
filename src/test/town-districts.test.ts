@@ -1,45 +1,25 @@
-import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
+import { buildWorld, flood, FREE_WALK, PREMIUM_WALK, LawlHousing, LawlWorld } from "./world-harness";
 
-const scope: any = {};
-runInNewContext(readFileSync("public/seafaring.js", "utf8"), scope);
-runInNewContext(readFileSync("public/housing.js", "utf8"), scope);
-runInNewContext(readFileSync("public/caves.js", "utf8"), scope);
-runInNewContext(readFileSync("public/monsters.js", "utf8"), scope);
-const game = readFileSync("public/reinos.html", "utf8");
-function world() {
-  const s: any = { LawlSeafaring: scope.LawlSeafaring, LawlHousing: scope.LawlHousing, LawlCaves: scope.LawlCaves, LawlMonsters: scope.LawlMonsters, setInterval: () => {}, setTimeout: () => {}, Math, p: { x: 30, y: 30, z: 0 }, maps: [], mobsZ: [[], [], []], map: [], W: 160, H: Number(game.match(/W=160,H=(\d+)/)?.[1]),
-    training: (x: number, y: number) => x >= 36 && x <= 41 && y >= 26 && y <= 34,
-    depotArea: (x: number, y: number) => x >= 43 && x <= 47 && y >= 27 && y <= 33,
-    BOSSES: Array(8).fill({}), BROOM: (i: number) => ({ x: 4 + i * 12, y: 80 }), MOBP: "t-", mobSeq: 0 };
-  runInNewContext(game.slice(game.indexOf("const monsters="), game.indexOf("let maps=")) + "\nglobalThis.ZONES=ZONES;globalThis.MON=MON;", s);
-  runInNewContext(game.slice(game.indexOf("function genMap("), game.indexOf("let mobSeq=")) + "\nglobalThis.HOUSES=HOUSES;", s);
-  s.genMap();
-  return s;
-}
-const walk = (t: number) => [0, 3, 5, 7, 8, 10].includes(t);
-
+const scope = { LawlHousing };
+const world = buildWorld;
+const walk = (t: number) => FREE_WALK.includes(t);
 describe("Lawl town districts", () => {
-  it("moves the two southern hunts away from the city houses without shrinking them", () => {
+  it("keeps Lawl houses at least 9 SQM away from every hunting area", () => {
     const s = world();
-    const houses = scope.LawlHousing.catalog(s.HOUSES).filter((h: any) => h.id === "lawl-15" || h.id === "lawl-16");
-    for (const index of [6, 7]) {
-      const zone = s.ZONES[index];
-      expect(zone.y1).toBe(80);
-      expect(zone.y2 - zone.y1).toBe(23);
-      for (const house of houses) expect(zone.y1 - (house.y + house.h)).toBeGreaterThanOrEqual(9);
-      expect(s.maps[0][zone.cy][zone.cx]).toBe(5);
-      expect(s.maps[1][zone.cy][zone.cx]).toBe(8);
-      expect(zone.y2).toBeLessThan(s.maps[0].length - 1);
-    }
+    for (const [x0, y0, w, h] of s.HOUSES.slice(0, 22)) for (const z of s.ZONES)
+      expect(Math.max(z.x1 - (x0 + w - 1), x0 - z.x2, z.y1 - (y0 + h - 1), y0 - z.y2)).toBeGreaterThanOrEqual(9);
   });
   it("every house is reachable from the city center through its door", () => {
     const s = world(), M = s.maps[0];
     const seen = new Set(["30,30"]), q: [number, number][] = [[30, 30]];
     while (q.length) { const next = q.shift(); if (!next) break; const [x, y] = next; for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]] as [number, number][]) { const nx = x + dx, ny = y + dy, k = nx + "," + ny; if (!seen.has(k) && walk(M[ny]?.[nx])) { seen.add(k); q.push([nx, ny]); } } }
-    expect(s.HOUSES.length).toBe(22);
-    for (const [x0, y0, w, h] of s.HOUSES) expect(seen.has(`${x0 + 1},${y0 + 1}`)).toBe(true);
+    expect(s.HOUSES.length).toBe(46);
+    for (const [x0, y0] of s.HOUSES.slice(0, 22)) expect(seen.has(`${x0 + 1},${y0 + 1}`)).toBe(true);
+    for (const c of LawlWorld.cities) {
+      const r = flood(M, c.cx, c.cy, PREMIUM_WALK);
+      for (const h of LawlHousing.catalog(s.HOUSES).filter((h: any) => h.name.endsWith(c.name))) expect(r(h.x + 1, h.y + 1)).toBe(true);
+    }
   });
   it("keeps at least 3 SQM between any two house doors", () => {
     const houses = scope.LawlHousing.catalog(world().HOUSES);
@@ -55,8 +35,8 @@ describe("Lawl town districts", () => {
   });
   it("quadruples every house footprint while preserving all 22 lease IDs", () => {
     const houses = scope.LawlHousing.catalog(world().HOUSES);
-    expect(houses).toHaveLength(22);
-    for (let i = 0; i < houses.length; i++) {
+    expect(houses).toHaveLength(46);
+    for (let i = 0; i < 22; i++) {
       const h = houses[i], oldWidth = i === 14 || i === 15 ? 5 : 4;
       expect(h.id).toBe(`lawl-${i + 1}`);
       expect(h.w).toBe(oldWidth * 2);
@@ -66,7 +46,8 @@ describe("Lawl town districts", () => {
   });
   it("keeps houses separate and clear of the harbor lake and city services", () => {
     const houses = scope.LawlHousing.catalog(world().HOUSES);
-    const obstacles = [{x:25,y:25,w:11,h:11},{x:36,y:26,w:6,h:9},{x:43,y:27,w:5,h:7},{x:25,y:39,w:12,h:8}];
+    const obstacles = [{x:25,y:25,w:11,h:11},{x:36,y:26,w:6,h:9},{x:43,y:27,w:5,h:7},{x:25,y:39,w:12,h:8},
+      ...LawlWorld.cities.flatMap((c: any) => [{x:c.cx-4,y:c.cy-4,w:9,h:9},{x:c.depot.x1,y:c.depot.y1,w:c.depot.x2-c.depot.x1+1,h:c.depot.y2-c.depot.y1+1},{x:c.pool.x1,y:c.pool.y1,w:c.pool.x2-c.pool.x1+1,h:c.pool.y2-c.pool.y1+1}])];
     for (let i = 0; i < houses.length; i++) {
       const h = houses[i];
       for (const other of [...houses.slice(i + 1), ...obstacles])

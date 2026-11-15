@@ -27,8 +27,8 @@ describe("GM minimap navigation", () => {
     expect(nav.select({ isGm: false }, player, true, 30, 30, 0)).toBeNull();
   });
   it("never selects coordinates outside the existing teleport bounds", () => {
-    expect(() => nav.select(status, player, true, 160, 30, 0)).toThrow();
-    expect(() => nav.select(status, player, true, 30, 100, 0)).toThrow();
+    expect(() => nav.select(status, player, true, 300, 30, 0)).toThrow();
+    expect(() => nav.select(status, player, true, 30, 230, 0)).toThrow();
     expect(() => nav.select(status, player, true, 30, 30, 2)).toThrow();
   });
 });
