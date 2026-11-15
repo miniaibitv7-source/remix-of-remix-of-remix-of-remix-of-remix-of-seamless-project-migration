@@ -31,7 +31,7 @@ describe("hunting caves and surface hunts", () => {
       });
       it(`${z.name} (${label}): has no 1-SQM passages`, () => {
         const pinched: string[] = [];
-        for (let y = z.y1 + 1; y < z.y2; y++) for (let x = z.x1 + 1; x < z.x2; x++) if (grid[y][x] === floor) {
+        for (let y = z.y1 + 1; y < z.y2; y++) for (let x = z.x1 + 1; x < z.x2; x++) if (grid[y]![x] === floor) {
           const o = (a: number, b: number) => grid[b]?.[a] === floor || (b === z.y1 || b === z.y2 || a === z.x1 || a === z.x2) || grid[b]?.[a] === 5 || grid[b]?.[a] === 8;
           if ((!o(x - 1, y) && !o(x + 1, y)) || (!o(x, y - 1) && !o(x, y + 1))) pinched.push(`${x},${y}`);
         }

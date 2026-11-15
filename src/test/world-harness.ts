@@ -31,7 +31,7 @@ export function flood(grid: any[][], sx: number, sy: number, walk: number[]) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
       const k = ny * W + nx;
-      if (!seen[k] && walk.includes(grid[ny][nx])) { seen[k] = 1; q.push([nx, ny]); }
+      if (!seen[k] && walk.includes(grid[ny]![nx]!)) { seen[k] = 1; q.push([nx, ny]); }
     }
   }
   return (x: number, y: number) => !!seen[y * W + x];

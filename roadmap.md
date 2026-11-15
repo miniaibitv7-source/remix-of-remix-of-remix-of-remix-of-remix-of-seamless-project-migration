@@ -157,3 +157,11 @@
 - [x] Aba Guilda no chat, visível só para os membros da mesma guilda.
 - [x] Janela testada no computador e no celular com dados simulados.
 - [ ] Testar guilda de ponta a ponta com duas contas reais: ainda não há contas cadastradas.
+
+# Mundo novo (mobs, hunts e cidades)
+- [x] Monstros antigos fora do mapa (mantidos no catálogo); 169 monstros da wiki em 41 áreas de caça, dos mais fracos (perto de Lawl) aos mais fortes.
+- [x] Hunts afastadas de Lawl, pontos de lure para 8+ monstros, corredores de 2/3/4 SQM, andar de cima e caverna.
+- [x] Cidades novas Kharum, Glacira e Umbra com templo, sacerdote, depot, lojas, porto e 8 casas cada (24 casas novas cadastradas para aluguel).
+- [x] Terras de nível alto só Premium, por barco e por terra; morte e pergaminho sempre levam ao templo de Lawl.
+- [x] GM pode teleportar para qualquer ponto do mapa maior; 273 verificações passaram.
+- [ ] Testar com conta real aluguel das casas novas, barcos e sacerdotes: ainda não há contas cadastradas.

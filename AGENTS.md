@@ -34,3 +34,4 @@ use the editor.
 - The game client is the static `public/reinos.html` iframe; `src/routes/index.tsx` bridges it with the `lawlCloudSave`, `lawlRpc` and `lawlNet` messages and the `lawl-world` channel. Keep those names: the game scripts call them directly.
 - Game state is written only through security-definer `lawl_*` database functions; tables grant clients read access at most. Why: save guards for gems, houses, market and trades must not be bypassed.
 - Database tests locate migrations by a content marker, not by file name. Why: migration file names are assigned by Lovable.
+- World layout (map size, cities, hunting zones, ports, routes, houses) is generated in `public/world.js` (`LawlWorld`), with hunting caves carved by `LawlCaves.carveHunt` in `public/caves.js`. Why: one deterministic source keeps the game, GM tools and tests in sync; `lawl_house_catalog()` and GM bounds in the database must match it.
