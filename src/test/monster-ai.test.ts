@@ -62,6 +62,25 @@ describe("shared monster simulation", () => {
   });
 });
 
+describe("GameMaster", () => {
+  it("is never chased by monsters online; they keep wandering", () => {
+    const game=readFileSync("public/reinos.html","utf8");
+    const m={...mob(),mv:0};let chased=0;
+    const g = { LawlMonsterAI: ai, players:()=>[{x:3,y:0,z:0,hp:100,gm:true}], maps:[Array.from({length:20},()=>Array(20).fill(0)),[]], mobsZ:[[m],[]], npcsTop:[],
+      mobOk:(_z:number,x:number,y:number)=>x>=0&&y>=0&&x<20&&y<20,
+      safe:()=>false,zoneAt:()=>0,dist:(a:{x:number;y:number},b:{x:number;y:number})=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y)),
+      mobChaseStep:()=>{chased++;return [1,0]},
+      simulate:(_dt:number)=>{} };
+    runInNewContext(game.slice(game.indexOf("function simulate(dt)"),game.indexOf("const MOBMSG=")),g);
+    g.simulate(.016);
+    expect(chased).toBe(0);
+    expect(m.mv).toBeGreaterThanOrEqual(1.5);
+  });
+  it("is ignored by monsters in solo play", () => {
+    const game=readFileSync("public/reinos.html","utf8");
+    expect(game).toMatch(/aggro=!isGM\(\)&&mobAggro\(/);
+  });
+});
 describe("obstacle navigation", () => {
   it("routes around a wall instead of cutting diagonally through it", () => {
     const game=readFileSync("public/reinos.html","utf8");

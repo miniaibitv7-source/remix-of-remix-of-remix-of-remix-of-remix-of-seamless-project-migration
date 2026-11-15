@@ -169,3 +169,4 @@
 # Velocidade dos monstros
 - [x] Todos os monstros andam 55% mais devagar (45% da velocidade anterior), no jogo solo e online.
 - [x] Com os 8 SQM em volta do personagem ocupados, os outros monstros que o veem param e andam aleatoriamente até abrir um espaço; então voltam a atacar.
+- [x] Monstros ignoram o GameMaster (sozinho e online): não seguem nem atacam, só passeiam normalmente.

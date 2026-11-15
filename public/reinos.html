@@ -1173,7 +1173,7 @@ function update(dt){
  const net=window.__lawlMobNet,shared=!!(net&&net.shared());
  for(const m of [...mobs]){
   /* Só os monstros perto do jogador pensam aqui; os distantes ficam parados até alguém chegar (mapa grande, leve no celular). */
-  if(m.dummy||Math.abs(m.x-p.x)>24||Math.abs(m.y-p.y)>24)continue;m.cd-=dt;const d=dist(m,p),aggro=mobAggro(m,!!LawlMonsterAI.target(m,[p],q=>!safe(q.x,q.y)));
+  if(m.dummy||Math.abs(m.x-p.x)>24||Math.abs(m.y-p.y)>24)continue;m.cd-=dt;const d=dist(m,p),aggro=!isGM()&&mobAggro(m,!!LawlMonsterAI.target(m,[p],q=>!safe(q.x,q.y)));/* O GameMaster é ignorado: monstros seguem seu passeio normal. */
   const ready=(!shared||m.boss)&&LawlMonsterAI.tick(m,dt,aggro)&&!((mobFx.get(m)?.para||0)>sNow());
   if(m.t.official){runMonsterAbilities(m,dt,aggro,(!shared||net.isHost()));}
   if(!m.t.official&&aggro&&d<=1&&m.cd<=0&&!isGM()){
@@ -2876,7 +2876,8 @@ const hpOf=m=>Math.max(0,Math.round(m.hp));
 const invOf=m=>Math.max(0,Math.round((m.invisibleUntil||0)-Date.now()));
 const mobRow=m=>[m.id,m.z,m.zone,m.t.name,m.x,m.y,hpOf(m),invOf(m)];
 const mobKey=m=>m.x+","+m.y+","+hpOf(m)+","+(invOf(m)>0?1:0);
-function players(){const now=Date.now(),l=[{x:p.x,y:p.y,z:p.z}];for(const o of others.values())if(now-o.seen<10000)l.push({x:o.x,y:o.y,z:o.z});return l}
+/* O GameMaster entra com gm:true: mantém os monstros vivos por perto, mas nunca é alvo. */
+function players(){const now=Date.now(),gm=GM?.status?.gmId,l=[{x:p.x,y:p.y,z:p.z,gm:isGM()}];for(const [id,o] of others)if(now-o.seen<10000)l.push({x:o.x,y:o.y,z:o.z,gm:!!gm&&(id===gm||o.id===gm)});return l}
 function pickHost(){let id=N.me,s=SINCE;for(const o of others.values()){const os=+o.since||Infinity;if(os<s||(os===s&&o.id<id)){id=o.id;s=os}}return id}
 function sendFull(){const all=allMobs();send("mfull",{l:all.map(mobRow)});lastSent=new Map(all.map(m=>[m.id,mobKey(m)]));lastFull=lastUpd=Date.now()}
 function sendUpd(){const u=[],a=[],cur=new Set();
@@ -2900,7 +2901,7 @@ function simulate(dt){const ps=players();
  for(const z of [0,1]){const pz=ps.filter(q=>q.z===z);if(!pz.length)continue;const list=mobsZ[z];
   const occ=(x,y)=>list.some(m=>m.x===x&&m.y===y)||(!z&&npcsTop.some(n=>n.x===x&&n.y===y))||pz.some(q=>q.x===x&&q.y===y);
   for(const m of list){if(m.dummy||!pz.some(q=>Math.abs(q.x-m.x)<=24&&Math.abs(q.y-m.y)<=24))continue;
-   const tg=LawlMonsterAI.target(m,pz,q=>!safe(q.x,q.y)),td=tg?dist(m,tg):Infinity;
+   const tg=LawlMonsterAI.target(m,pz,q=>!q.gm&&!safe(q.x,q.y)),td=tg?dist(m,tg):Infinity;
    if(!LawlMonsterAI.tick(m,dt,!!tg))continue;
    if(m.t.official&&z!==p.z){for(const a of LawlMonsters.tick(m,dt,!!tg,true))LawlMonsters.support(m,a)}
    if(tg&&td<=(m.t.official&&!m.t.closeCombat?3:1)){m.mv=.2;continue}
