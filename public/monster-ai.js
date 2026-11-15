@@ -1,10 +1,12 @@
 (function(root){
  "use strict";
  // Catalogs without an explicit level derive it from combat rewards; never from the player's level.
+ // Monsters walk at 45% of their catalog speed (cut by 55% because hunts felt too fast).
+ const SPEED_SCALE=.45;
  function profile(m){
   const t=m.t||m,level=Math.max(1,Number(t.level)||Math.round(Math.sqrt(Math.max(1,Number(t.xp)||1)/2)));
   const strength=Math.sqrt(Math.max(0,Number(t.hp)||0))/3+Math.max(0,Number(t.dmg)||0)/2;
-  const speed=t.official?Math.max(1,Number(t.speed)||1)*(m.hasteUntil>Date.now()?1.3:1):Math.min(300,105+level*2+strength);
+  const speed=(t.official?Math.max(1,Number(t.speed)||1)*(m.hasteUntil>Date.now()?1.3:1):Math.min(300,105+level*2+strength))*SPEED_SCALE;
   return {level,speed,step:Math.round(75000/speed)/1000,sight:Math.min(12,7+Math.floor(level/10)),leash:Math.min(15,10+Math.floor(level/10))};
  }
  function target(m,players,allowed){
@@ -19,5 +21,5 @@
   m._hunting=engaged;
   return m.mv<=0;
  }
- root.LawlMonsterAI={profile,target,tick};
+ root.LawlMonsterAI={profile,target,tick,SPEED_SCALE};
 })(globalThis);

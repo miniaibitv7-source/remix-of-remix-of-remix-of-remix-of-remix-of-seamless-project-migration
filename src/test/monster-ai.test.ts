@@ -21,6 +21,11 @@ describe("monster pursuit", () => {
     const strong=mob();strong.t.hp=1200;strong.t.dmg=90;
     expect(ai.profile(strong).speed).toBeGreaterThan(ai.profile(mob()).speed);
   });
+  it("moves monsters at 45% of their catalog speed (55% slower)", () => {
+    const wiki={ ...mob(), t: { ...mob().t, official: true, speed: 200 } } as unknown as Mob;
+    expect(ai.profile(wiki).speed).toBeCloseTo(90);
+    expect(ai.profile(wiki).step).toBeCloseTo(0.833, 3);
+  });
   it("detects a character beyond the old five-tile limit", () => {
     const player={ x: 7, y: 0, z: 0 };
     expect(ai.target(mob(),[player],()=>true)).toEqual(player);

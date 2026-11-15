@@ -165,3 +165,6 @@
 - [x] Terras de nível alto só Premium, por barco e por terra; morte e pergaminho sempre levam ao templo de Lawl.
 - [x] GM pode teleportar para qualquer ponto do mapa maior; 273 verificações passaram.
 - [ ] Testar com conta real aluguel das casas novas, barcos e sacerdotes: ainda não há contas cadastradas.
+
+# Velocidade dos monstros
+- [x] Todos os monstros andam 55% mais devagar (45% da velocidade anterior), no jogo solo e online.
